@@ -1,0 +1,12 @@
+server:
+  port: 8761
+
+eureka:
+  instance:
+    hostname: eureka-server
+    prefer-ip-address: false
+
+logging:
+  level:
+    com.netflix.eureka: INFO
+    org.springframework.cloud: INFO

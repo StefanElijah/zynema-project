@@ -1,0 +1,4 @@
+﻿eureka:
+  instance:
+    hostname: bff-service
+    prefer-ip-address: false

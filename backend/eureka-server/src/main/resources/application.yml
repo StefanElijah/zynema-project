@@ -1,0 +1,45 @@
+server:
+  port: 8761
+  shutdown: graceful
+
+spring:
+  application:
+    name: eureka-server
+  profiles:
+    active: default
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+  server:
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 10000
+    renewal-percent-threshold: 0.85
+    response-cache-update-interval-ms: 5000
+  instance:
+    hostname: ${EUREKA_HOST:localhost}
+    prefer-ip-address: false
+    leaseRenewalIntervalInSeconds: 10
+    leaseExpirationDurationInSeconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    eureka:
+      enabled: true
+
+info:
+  app:
+    name: eureka-server
+    description: Zynema service discovery

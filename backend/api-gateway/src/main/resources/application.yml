@@ -1,0 +1,70 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: api-gateway
+  profiles:
+    active: default
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+        - PreserveHostHeader
+  config:
+    import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 20
+        permittedNumberOfCallsInHalfOpenState: 5
+        waitDurationInOpenState: 30s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 80
+        slowCallDurationThreshold: 3s
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  health:
+    circuitbreakers:
+      enabled: true
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
+
+info:
+  app:
+    name: api-gateway
+    description: Zynema reactive API gateway

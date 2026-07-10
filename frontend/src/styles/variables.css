@@ -1,0 +1,36 @@
+:root {
+  /* Paleta / accents */
+  --accent-red: #e50916;
+  --accent-red-hover: #ff0a1a;
+  --accent-cyan: #0dcaf0;
+
+  /* Tipografía / texto */
+  --text-primary: #ffffff;
+  --text-secondary: #cfcfcf;
+  --text-muted: #8a8a8a;
+
+  /* Radios y esquinas */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+
+  /* Bordes / separadores */
+  --border-color: #141414;
+
+  /* Transiciones */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+
+  /* Éxitos / errores */
+  --success: #28a745;
+  --danger: #dc3545;
+
+  /* Tamaños comunes */
+  --card-image-height: 56.25%;
+}
+
+/* Pequeñas utilidades */
+.u-center { display: flex; align-items: center; justify-content: center; }
+.hidden { display: none !important; }

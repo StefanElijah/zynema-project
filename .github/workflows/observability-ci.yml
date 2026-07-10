@@ -1,0 +1,68 @@
+name: Observability & Infra CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'infra/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.override.yml'
+      - '.github/workflows/observability-ci.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'infra/**'
+
+jobs:
+  validate-compose:
+    name: Validate docker-compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate base compose
+        run: docker compose config -q
+      - name: Validate core profile
+        run: docker compose --profile core config -q
+      - name: Validate auth profile
+        run: docker compose --profile auth config -q
+      - name: Validate storage profile
+        run: docker compose --profile storage config -q
+      - name: Validate observability profile
+        run: docker compose --profile observability config -q
+
+  validate-configs:
+    name: Validate observability configs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Prometheus
+        run: docker run --rm -v "${{ github.workspace }}/infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" prom/prometheus:latest promtool check config /etc/prometheus/prometheus.yml
+      - name: Validate Loki
+        run: docker run --rm -v "${{ github.workspace }}/infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro" grafana/loki:2.9.8 -config.file=/etc/loki/local-config.yaml -verify-config
+      - name: Validate Tempo
+        run: docker run --rm -v "${{ github.workspace }}/infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro" grafana/tempo:2.5.0 -config.file=/etc/tempo.yaml -verify-config
+      - name: Validate nginx HLS
+        run: docker run --rm -v "${{ github.workspace }}/infra/nginx/hls.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine nginx -t
+
+  validate-keycloak:
+    name: Validate Keycloak realm JSON
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JSON syntax check
+        run: |
+          python3 -c "import json; json.load(open('infra/keycloak/realm-export/zynema-realm.json'))" && echo "Valid JSON"
+
+  validate-k8s:
+    name: Validate K8s manifests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+      - name: Validate k8s YAML
+        run: |
+          for f in $(find infra/k8s -name '*.yaml'); do
+            echo "Validating $f"
+            kubectl apply --dry-run=client -f "$f" || exit 1
+          done

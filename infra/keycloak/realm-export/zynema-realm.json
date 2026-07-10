@@ -1,0 +1,64 @@
+{
+  "realm": "zynema",
+  "enabled": true,
+  "displayName": "Zynema",
+  "accessTokenLifespan": 3600,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Default end-user role" },
+      { "name": "admin", "description": "Full administrative access" },
+      { "name": "content-manager", "description": "Can manage catalog content" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "zynema-web",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": false,
+      "standardFlowEnabled": true,
+      "redirectUris": ["http://localhost:5173/*", "http://localhost:8080/*"],
+      "webOrigins": ["*"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      },
+      "protocol": "openid-connect"
+    },
+    {
+      "clientId": "zynema-bff",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "secret": "zynema-bff-dev-secret",
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "demo",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "demo@zynema.local",
+      "firstName": "Demo",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "demo",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["user"]
+    }
+  ]
+}

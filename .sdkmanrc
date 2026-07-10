@@ -1,0 +1,4 @@
+# Used by SDKMAN to pin Java and Maven versions
+# https://sdkman.io/
+java=21.0.5-tem
+maven=3.9.9

@@ -1,0 +1,52 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "never"
+  },
+  "[java]": {
+    "editor.defaultFormatter": "vscjava.vscode-java-pack",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+    "editor.tabSize": 2
+  },
+  "[dockercompose]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/build": true,
+    "**/.nx/cache": true,
+    "**/dist": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/target": true,
+    "**/build": true,
+    "**/dist": true
+  },
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "spring-boot.dashboard.endpoint": "http://localhost:8761",
+  "java.test.config": {
+    "vmArgs": [
+      "-XX:+EnableDynamicAgentLoading"
+    ]
+  }
+}

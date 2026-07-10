@@ -1,0 +1,96 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+build/
+dist/
+target/
+out/
+*.jar
+*.war
+*.class
+*.log
+*.tsbuildinfo
+
+# Coverage
+coverage/
+*.lcov
+*.coverage
+*.exec
+jacoco/
+
+# IDE
+.idea/
+*.iml
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.fleet/
+.cursor/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Secrets
+secrets/
+*.pem
+*.key
+*.p12
+
+# Docker volumes (local data)
+data/
+volumes/
+postgres-data/
+minio-data/
+kafka-data/
+
+# Java
+*.class
+*.jar
+*.war
+hs_err_pid*
+replay_pid*
+
+# Maven
+backend/**/target/
+backend/**/.mvn/
+backend/**/mvnw
+backend/**/mvnw.cmd
+
+# Logs
+logs/
+*.log
+pnpm-debug.log*
+pnpm-error.log*
+
+# Test artifacts
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Generated
+**/.nx/cache
+**/.nx/workspace-data
+**/generated/
+
+# Local infra state
+.pgdata/
+.redisdata/
+
+# Recovery artifacts (DO NOT commit — these are for the developer only)
+.opencode-backup/
+
+# Local config git repo (initialized separately, has its own .git)
+# We DO want to track the YAML/MD config files, just not the inner .git
+infra/config-repo/.git/

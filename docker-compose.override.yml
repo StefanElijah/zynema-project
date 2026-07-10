@@ -1,0 +1,81 @@
+# ──────────────────────────────────────────────────────────────
+# Docker Compose override — local dev only
+# Mounts local source for hot-reload, exposes extra debug ports
+# ──────────────────────────────────────────────────────────────
+name: zynema
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: devpassword
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  kafka:
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+
+  eureka-server:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    ports:
+      - "5005:5005"
+
+  config-server:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006"
+    ports:
+      - "5006:5006"
+
+  api-gateway:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007"
+    ports:
+      - "5007:5007"
+
+  catalog-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5011"
+    ports:
+      - "5011:5011"
+
+  user-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5012"
+    ports:
+      - "5012:5012"
+
+  payment-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5013"
+    ports:
+      - "5013:5013"
+
+  playback-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5014"
+    ports:
+      - "5014:5014"
+
+  bff-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5015"
+    ports:
+      - "5015:5015"
+
+  notification-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5016"
+    ports:
+      - "5016:5016"
+
+  auth-service:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5017"
+    ports:
+      - "5017:5017"

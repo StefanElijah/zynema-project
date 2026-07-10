@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zynema-eureka
+  labels:
+    app: zynema
+    component: eureka
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zynema
+      component: eureka
+  template:
+    metadata:
+      labels:
+        app: zynema
+        component: eureka
+    spec:
+      containers:
+        - name: eureka
+          image: zynema/eureka-server:0.1.0
+          ports:
+            - containerPort: 8761
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: k8s
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zynema-eureka
+spec:
+  selector:
+    app: zynema
+    component: eureka
+  ports:
+    - port: 8761
+      targetPort: 8761
+  type: ClusterIP

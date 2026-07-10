@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "editorconfig.editorconfig",
+    "vscjava.vscode-java-pack",
+    "vscjava.vscode-spring-boot-dashboard",
+    "pivotal.vscode-boot-dev-pack",
+    "ms-azuretools.vscode-docker",
+    "hashicorp.terraform",
+    "redhat.vscode-yaml",
+    "ms-playwright.playwright",
+    "nrwl.angular-console",
+    "formulahendry.auto-rename-tag",
+    "streetsidesoftware.code-spell-checker"
+  ]
+}

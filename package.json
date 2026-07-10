@@ -1,0 +1,58 @@
+{
+  "name": "zynema-project",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Production-grade streaming platform simulation with Netflix-style microservice architecture. Multi-stack monorepo: React + Vite frontend, Spring Boot 3.5 microservicios backend, full observability stack.",
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "preinstall": "node -e \"const e=process.env.npm_execpath||'';if(e.includes('npm')&&!e.includes('pnpm')){console.error('\\n\\u274c Este proyecto usa pnpm exclusivamente.\\n\\u2705 Ejecuta: pnpm install\\n');process.exit(1)}\"",
+    "dev": "nx run-many --target=serve --all --parallel=3",
+    "dev:frontend": "nx serve frontend",
+    "dev:backend": "nx run-many --target=serve --projects=tag:backend --parallel=3",
+    "build": "nx run-many --target=build --all",
+    "build:frontend": "nx build frontend",
+    "build:backend": "nx run-many --target=build --projects=tag:backend",
+    "test": "nx run-many --target=test --all",
+    "test:frontend": "nx test frontend",
+    "test:backend": "nx run-many --target=test --projects=tag:backend",
+    "lint": "nx run-many --target=lint --all",
+    "format": "nx format:write",
+    "format:check": "nx format:check",
+    "graph": "nx graph",
+    "reset": "nx reset",
+    "prepare": "husky || true",
+    "docker:up": "docker compose --profile core --profile auth up -d",
+    "docker:up:full": "docker compose --profile core --profile auth --profile storage --profile observability up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:clean": "docker compose down -v"
+  },
+  "devDependencies": {
+    "@nx/maven": "^22.0.0",
+    "@nx/vite": "^22.0.0",
+    "@nx/react": "^22.0.0",
+    "@nx/js": "^22.0.0",
+    "@nx/eslint": "^22.0.0",
+    "@nx/workspace": "^22.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "nx": "^22.0.0",
+    "prettier": "^3.3.3",
+    "typescript": "~5.6.3"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "*.java": [
+      "prettier --write"
+    ]
+  }
+}

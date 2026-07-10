@@ -1,0 +1,45 @@
+server:
+  port: 8888
+  shutdown: graceful
+
+spring:
+  application:
+    name: config-server
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: file:./config-repo/,classpath:/config-repo/
+        git:
+          uri: file:///config-repo
+          default-label: main
+          clone-on-start: true
+          force-pull: false
+  rabbitmq: { host: disabled }
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:8761}/eureka/
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+
+info:
+  app:
+    name: config-server
+    description: Zynema external configuration
