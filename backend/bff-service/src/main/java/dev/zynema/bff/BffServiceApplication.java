@@ -1,4 +1,4 @@
-﻿package dev.zynema.bff;
+package dev.zynema.bff;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
