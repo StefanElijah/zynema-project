@@ -1,0 +1,21 @@
+# Generated or vendored files: never format these.
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+node_modules/
+dist/
+build/
+out/
+target/
+coverage/
+test-results/
+playwright-report/
+
+.opencode-backup/
+.infrastructure/
+infra/k8s/overlays/
+
+# Java build output that may sit next to sources
+**/*.class
+**/*.jar
