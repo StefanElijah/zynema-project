@@ -1,6 +1,111 @@
 # Troubleshooting
 
-Quick answers to common problems.
+Quick answers to common problems. Sections marked **[F1]** were discovered
+while building Fase 1 (skeleton) — they are the traps we already hit.
+
+## **[F1] Config Server hangs and never answers HTTP requests**
+
+Symptom: `curl http://localhost:8888/application/default` times out; the
+config-server registers in Eureka but never responds; `jstack` shows
+`http-nio-8888-exec-*` threads blocked in `ConfigServerConfigDataLoader`.
+
+Cause: the config **served** by the config server contained
+`spring.config.import: configserver:...`. When serving a request, the native
+repository processed that import and tried to fetch config from itself →
+self-referential loop.
+
+Rule: `infra/config-repo/application.yml` must NEVER contain
+`spring.config.import`. That property belongs in each service's **local**
+`application.yml` only.
+
+## **[F1] Config Server overrides local application.yml values**
+
+Symptom: a service loses a property it defines locally (e.g. the gateway's
+`management.endpoints.web.exposure.include` list).
+
+Cause: by design, properties from the config server have **higher precedence**
+than the service's own `application.yml`.
+
+Rule: put in `infra/config-repo/application.yml` only properties that are
+truly identical across ALL services. Anything service-specific (endpoint
+exposure lists, `spring.application.name`, ports, …) stays local.
+
+## **[F1] /actuator/gateway 404 on the API gateway**
+
+Symptom: `/actuator/gateway/routes` returns 404 even with
+`management.endpoints.web.exposure.include=gateway`.
+
+Cause: Spring Cloud Gateway 4.3.x disables the gateway actuator endpoint's
+**access** by default.
+
+Fix: in `api-gateway/src/main/resources/application.yml`:
+```yaml
+management:
+  endpoint:
+    gateway:
+      access: read-only
+```
+
+## **[F1] "Spring Boot [3.5.0] is not compatible with this Spring Cloud release train"**
+
+Symptom: context load fails with `CompatibilityNotMetException`.
+
+Cause: Spring Cloud 2024.0.x targets Boot 3.4.x. We use Boot 3.5.x.
+
+Fix: Spring Cloud **2025.0.x** (see ADR-0011). Note the breaking renames in
+2025.0: `spring-cloud-starter-gateway` → `spring-cloud-starter-gateway-server-webflux`
+and `spring.cloud.gateway.*` → `spring.cloud.gateway.server.webflux.*`.
+
+## **[F1] springdoc + WebFlux: "No more pattern data allowed after ** pattern element"**
+
+Symptom: WebFlux app fails to start inside
+`SwaggerWebFluxConfigurer.addResourceHandlers`.
+
+Cause: regression introduced in springdoc 2.8.15 (path pattern combination
+with Spring Framework 6.2).
+
+Fix: pin `springdoc.version` to **2.8.14** in `backend/pom.xml`.
+
+## **[F1] Docker build fails: "mvn: not found" or "Child module does not exist"**
+
+Symptom: `docker compose build <service>` fails with exit 127 or
+`Child module ... does not exist`.
+
+Cause:
+- `eclipse-temurin:*-jdk-alpine` has no Maven.
+- The parent POM lists all 12 modules, but the Dockerfile only copied a few
+  module POMs.
+
+Fix (already applied to all Dockerfiles): build stage uses
+`maven:3.9.9-eclipse-temurin-21-alpine`, copies the whole `backend/`
+directory, and caches `~/.m2` with a BuildKit cache mount:
+```dockerfile
+# syntax=docker/dockerfile:1.7
+FROM maven:3.9.9-eclipse-temurin-21-alpine AS build
+WORKDIR /workspace
+COPY backend/ backend/
+RUN --mount=type=cache,target=/root/.m2 \
+    cd backend && mvn -B -pl <service> -am -DskipTests clean package
+```
+
+## **[F1] "illegal character: '\ufeff'" when compiling Java**
+
+Symptom: `mvn verify` fails with `illegal character: '\ufeff'` on line 1.
+
+Cause: a Java source was saved with a UTF-8 BOM.
+
+Fix: rewrite the file without BOM (e.g. `[System.IO.File]::WriteAllText` on
+Windows, or `sed -i '1s/^\xEF\xBB\xBF//' file`).
+
+## **[F1] YAML parse error: "mapping values are not allowed here"**
+
+Symptom: service fails to start, `SnakeYAML` reports the error with a line
+and column.
+
+Cause: an unquoted YAML value containing `": "` — e.g.
+`description: Backend-for-Frontend: WebClient aggregator...`.
+
+Fix: quote the value: `description: "Backend-for-Frontend: WebClient aggregator..."`.
 
 ## "Service X won't start in Docker"
 
@@ -9,14 +114,9 @@ Quick answers to common problems.
 3. Check the dependencies: most services depend on `eureka-server` and
    `config-server` being `healthy`. If config-server is down, everything
    else is.
-4. The most common root cause: the config repo at `infra/config-repo`
-   was not committed. Re-init:
+4. Remember `infra/config-repo` is a plain directory tracked in the main
+   repo (not a nested git repo). Restart the config server after editing it:
    ```bash
-   cd infra/config-repo
-   git status
-   # If empty:
-   git add . && git commit -m "config: initial"
-   cd ../..
    docker compose restart config-server
    ```
 

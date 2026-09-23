@@ -26,3 +26,4 @@ the choice made, and its consequences.
 | 0008 | [Outbox Pattern para garantía transaccional](0008-outbox.md) | Accepted |
 | 0009 | [Event Sourcing en playback-service](0009-event-sourcing.md) | Accepted |
 | 0010 | [Conventional commits, semantic versioning](0010-versioning-commits.md) | Accepted |
+| 0011 | [Spring Cloud 2025.0.x with Boot 3.5](0011-spring-cloud-2025.md) | Accepted |

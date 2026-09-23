@@ -1,12 +1,12 @@
-FROM eclipse-temurin:21-jdk-alpine AS build
+# syntax=docker/dockerfile:1.7
+
+# Multi-stage build for zynema-user-service
+# Build context is the repository root (see docker-compose.yml).
+FROM maven:3.9.9-eclipse-temurin-21-alpine AS build
 WORKDIR /workspace
-COPY backend/pom.xml backend/pom.xml
-COPY backend/common/pom.xml backend/common/pom.xml
-COPY backend/event-contracts/pom.xml backend/event-contracts/pom.xml
-COPY backend/user-service/pom.xml backend/user-service/pom.xml
-RUN cd backend && mvn -B -pl user-service -am -DskipTests dependency:go-offline
 COPY backend/ backend/
-RUN cd backend && mvn -B -pl user-service -DskipTests clean package
+RUN --mount=type=cache,target=/root/.m2 \
+    cd backend && mvn -B -pl user-service -am -DskipTests clean package
 
 FROM eclipse-temurin:21-jre-alpine
 RUN addgroup -S spring && adduser -S spring -G spring

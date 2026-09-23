@@ -1,8 +1,16 @@
-# Shared defaults for ALL Zynema services
+# ══════════════════════════════════════════════════════════════════════
+# Shared defaults for ALL Zynema services (served by config-server).
+#
+# RULES for this file:
+#  1. NEVER put `spring.application.name` here: it is per-service and must
+#     come from each service's own application.yml.
+#  2. NEVER put `spring.config.import: configserver:...` here: the config
+#     server would try to import from itself while serving a request and
+#     deadlock. The import lives in each service's local application.yml.
+#  3. Only put properties that are truly identical across services.
+# ══════════════════════════════════════════════════════════════════════
 
 spring:
-  application:
-    name: zynema
   jpa:
     open-in-view: false
     properties:
@@ -15,8 +23,6 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-  config:
-    import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 
 eureka:
   client:
@@ -28,21 +34,11 @@ eureka:
     lease-expiration-duration-in-seconds: 30
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: when-authorized
       probes:
         enabled: true
-  tracing:
-    sampling:
-      probability: 1.0
-  otlp:
-    tracing:
-      endpoint: http://tempo:4318
 
 resilience4j:
   circuitbreaker:

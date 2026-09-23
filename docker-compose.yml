@@ -1,8 +1,8 @@
-# ──────────────────────────────────────────────────────────────
-# Docker Compose — zynema-project
+﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# Docker Compose â€” zynema-project
 # Local production-grade simulation.
 # All services use profiles to manage RAM usage on 8-16GB dev machines.
-# ──────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 name: zynema
 
 x-rest-java: &rest-java
@@ -49,21 +49,19 @@ x-eureka: &eureka
     start_period: 30s
 
 services:
-  # ════════════════════ CORE INFRASTRUCTURE ════════════════════
+  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CORE INFRASTRUCTURE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   eureka-server:
     <<: *eureka
     profiles: ["core"]
     build:
-      context: ./backend/eureka-server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/eureka-server/Dockerfile
     container_name: zynema-eureka
     ports:
       - "8761:8761"
-    environment:
-      SPRING_PROFILES_ACTIVE: docker
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8761/actuator/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,19 +71,20 @@ services:
     <<: *rest-java-no-config
     profiles: ["core"]
     build:
-      context: ./backend/config-server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/config-server/Dockerfile
     container_name: zynema-config
     ports:
       - "8888:8888"
     environment:
-      SPRING_PROFILES_ACTIVE: docker
+      SPRING_PROFILES_ACTIVE: docker,native
+      SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo/
       SPRING_CLOUD_CONFIG_SERVER_GIT_URI: ${CONFIG_SERVER_GIT_URI}
       SPRING_CLOUD_CONFIG_SERVER_GIT_DEFAULT-LABEL: ${CONFIG_SERVER_GIT_DEFAULT_LABEL}
     volumes:
       - ./infra/config-repo:/config-repo
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -95,18 +94,18 @@ services:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/api-gateway
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/api-gateway/Dockerfile
     container_name: zynema-gateway
     ports:
       - "8080:8080"
     environment:
       <<: *rest-java-env
       SERVER_PORT: 8080
-      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_ENABLED: "true"
-      SPRING_CLOUD_GATEWAY_DISCOVERY_LOCATOR_LOWER-CASE_SERVICE_ID: "true"
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_ENABLED: "true"
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_LOWER-CASE_SERVICE_ID: "true"
 
-  # ════════════════════ DATA LAYER ════════════════════
+  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DATA LAYER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   postgres:
     profiles: ["core"]
@@ -194,14 +193,14 @@ services:
       kafka:
         condition: service_healthy
 
-  # ════════════════════ DOMAIN MICROSERVICES ════════════════════
+  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DOMAIN MICROSERVICES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   catalog-service:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/catalog-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/catalog-service/Dockerfile
     container_name: zynema-catalog
     environment:
       <<: *rest-java-env
@@ -213,8 +212,8 @@ services:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/user-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/user-service/Dockerfile
     container_name: zynema-user
     environment:
       <<: *rest-java-env
@@ -226,8 +225,8 @@ services:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/payment-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/payment-service/Dockerfile
     container_name: zynema-payment
     environment:
       <<: *rest-java-env
@@ -239,8 +238,8 @@ services:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/playback-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/playback-service/Dockerfile
     container_name: zynema-playback
     environment:
       <<: *rest-java-env
@@ -255,8 +254,8 @@ services:
     <<: *rest-java
     profiles: ["auth"]
     build:
-      context: ./backend/auth-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/auth-service/Dockerfile
     container_name: zynema-auth
     environment:
       <<: *rest-java-env
@@ -272,8 +271,8 @@ services:
   frontend:
     profiles: ["core"]
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./frontend/Dockerfile
     container_name: zynema-frontend
     restart: unless-stopped
     networks: [zynema-net]
@@ -286,20 +285,19 @@ services:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/bff-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/bff-service/Dockerfile
     container_name: zynema-bff
     environment:
       <<: *rest-java-env
-      SERVER_PORT: 8090
       KEYCLOAK_ISSUER_URI: ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}
 
   notification-service:
     <<: *rest-java
     profiles: ["core"]
     build:
-      context: ./backend/notification-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./backend/notification-service/Dockerfile
     container_name: zynema-notification
     environment:
       <<: *rest-java-env
@@ -309,7 +307,7 @@ services:
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
 
-  # ════════════════════ AUTH ════════════════════
+  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AUTH â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   keycloak:
     profiles: ["auth"]
@@ -343,7 +341,7 @@ services:
       - "1025:1025"
       - "8025:8025"
 
-  # ════════════════════ STORAGE / VIDEO ════════════════════
+  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STORAGE / VIDEO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   minio:
     profiles: ["storage"]
@@ -397,7 +395,7 @@ services:
       minio:
         condition: service_healthy
 
-  # ════════════════════ OBSERVABILITY (PLG + Tempo) ════════════════════
+  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• OBSERVABILITY (PLG + Tempo) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   prometheus:
     profiles: ["observability"]

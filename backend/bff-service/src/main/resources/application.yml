@@ -5,18 +5,10 @@
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-  security:
-    oauth2:
-      client:
-        registration:
-          zynema:
-            client-id: ${BFF_CLIENT_ID:zynema-bff}
-            client-secret: ${BFF_CLIENT_SECRET:devsecret}
-            authorization-grant-type: client_credentials
-            scope: openid
-        provider:
-          zynema:
-            issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/zynema}
+  # NOTE: OAuth2 client registration against Keycloak is added in Fase 3.
+  # Declaring an issuer-uri here triggers OIDC discovery at startup, which
+  # would make the BFF un-bootable in the `core` profile (Keycloak lives in
+  # the `auth` profile). Kept out until Fase 3 wires the token relay.
   config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 
@@ -51,4 +43,4 @@ springdoc:
 info:
   app:
     name: bff-service
-    description: Backend-for-Frontend: WebClient aggregator for the frontend
+    description: "Backend-for-Frontend: WebClient aggregator for the frontend"

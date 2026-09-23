@@ -19,11 +19,13 @@ public class GatewayRoutesConfig {
     public RouteLocator customRoutes(RouteLocatorBuilder builder) {
         return builder.routes()
             // ─── BFF routes (preferred for the frontend) ───
+            // NOTE: no fallbackUri yet — a proper fallback handler that returns the
+            // ApiError envelope is added in Fase 5 together with the BFF itself.
             .route("bff-web", r -> r
                 .path("/api/web/**")
                 .filters(f -> f
                     .stripPrefix(2)
-                    .circuitBreaker(cb -> cb.setName("bff-cb").setFallbackUri("forward:/fallback/bff")))
+                    .circuitBreaker(cb -> cb.setName("bff-cb")))
                 .uri("lb://bff-service"))
 
             // ─── Auth (public endpoints only; protected ones go through BFF) ───
