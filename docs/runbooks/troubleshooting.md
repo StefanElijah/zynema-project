@@ -39,6 +39,7 @@ Cause: Spring Cloud Gateway 4.3.x disables the gateway actuator endpoint's
 **access** by default.
 
 Fix: in `api-gateway/src/main/resources/application.yml`:
+
 ```yaml
 management:
   endpoint:
@@ -72,6 +73,7 @@ Symptom: `docker compose build <service>` fails with exit 127 or
 `Child module ... does not exist`.
 
 Cause:
+
 - `eclipse-temurin:*-jdk-alpine` has no Maven.
 - The parent POM lists all 12 modules, but the Dockerfile only copied a few
   module POMs.
@@ -79,6 +81,7 @@ Cause:
 Fix (already applied to all Dockerfiles): build stage uses
 `maven:3.9.9-eclipse-temurin-21-alpine`, copies the whole `backend/`
 directory, and caches `~/.m2` with a BuildKit cache mount:
+
 ```dockerfile
 # syntax=docker/dockerfile:1.7
 FROM maven:3.9.9-eclipse-temurin-21-alpine AS build
@@ -106,6 +109,77 @@ Cause: an unquoted YAML value containing `": "` — e.g.
 `description: Backend-for-Frontend: WebClient aggregator...`.
 
 Fix: quote the value: `description: "Backend-for-Frontend: WebClient aggregator..."`.
+
+## **[F2] Service boots locally but fails with a YAML error in another profile**
+
+Symptom: a service that used to start suddenly fails with
+`mapping values are not allowed here` or starts with half its configuration
+missing (no datasource, no redis, no security).
+
+Cause: a YAML block was concatenated onto the previous line, e.g.
+`minimum-idle: 2  data:` instead of `minimum-idle: 2` + a new line. The value
+becomes the string `"2  data:"` and the following block is silently re-parented
+under the wrong key.
+
+Why it hides: a service with no context-load test never parses its own
+`application.yml` during the build. `mvn compile` cannot catch it.
+
+Fix: split the blocks, and add a Testcontainers context test to the service —
+that test fails immediately on a malformed file.
+
+## **[F2] Testcontainers: "Could not find a valid Docker environment"**
+
+Symptom: every Testcontainers test fails with
+`IllegalStateException: Could not find a valid Docker environment`, and the log
+shows `BadRequestException (Status 400 ...)` for `/info`.
+
+Cause: Docker Engine 29 raised the minimum API version to **1.44**, but
+docker-java (bundled with Testcontainers < 1.21.4) defaults to 1.32. The
+daemon rejects the handshake.
+
+Fix: keep `testcontainers.version` at **1.21.4+** in `backend/pom.xml`.
+Workaround for older versions: `src/test/resources/docker-java.properties`
+with `api.version=1.44`.
+
+## **[F2] `@Cacheable` does nothing (self-invocation)**
+
+Symptom: a cached endpoint still hits the database every call; the cache
+region stays empty.
+
+Cause: the annotated method is called from another method **of the same bean**
+(`listMovies()` calling `this.list()`). Spring AOP only applies caching through
+the proxy, so internal calls bypass it.
+
+Fix: annotate the public entry point that controllers actually call, or inject
+the bean and call through the proxy.
+
+## **[F2] Writes return stale data (cache read inside a write)**
+
+Symptom: a `PUT` responds 200 but the body still shows the old values, and the
+next `GET` is correct.
+
+Cause: the write method calls a `@Cacheable` read to build its response. The
+eviction runs **after** the method returns, so the read served the old cached
+entry.
+
+Fix: build the write response with a non-cached path (see
+`CatalogQueryService.buildDetail`) and let `@CacheEvict` clear the regions.
+
+## **[F2] 404 becomes 500, or validation errors become 500**
+
+Symptom: an unknown URL returns 500 instead of 404; `?size=500` returns 500
+instead of 400.
+
+Cause: a catch-all `@ExceptionHandler(Exception.class)` in the shared
+`GlobalExceptionHandler` intercepts framework exceptions that already carry a
+status (`NoResourceFoundException`, `ConstraintViolationException`,
+`MissingServletRequestParameterException`).
+
+Fix: `common` handles them explicitly. Note that
+`NoResourceFoundException` implements `ErrorResponse` but does **not** extend
+`ErrorResponseException`, and it lives in `spring-webmvc` — which `common` does
+not depend on. The catch-all therefore checks
+`ex instanceof ErrorResponse` and reuses its status for 4xx.
 
 ## "Service X won't start in Docker"
 

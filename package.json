@@ -32,6 +32,8 @@
     "docker:clean": "docker compose down -v"
   },
   "devDependencies": {
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
     "@nx/maven": "^22.0.0",
     "@nx/vite": "^22.0.0",
     "@nx/react": "^22.0.0",
@@ -49,9 +51,6 @@
       "prettier --write"
     ],
     "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ],
-    "*.java": [
       "prettier --write"
     ]
   }
