@@ -1,0 +1,12 @@
+﻿# Per-service configuration for payment-service.
+#
+# Services with a database extend the shared readiness group: a service that
+# cannot reach its database must be taken out of the load balancer, while one
+# that only lost a cache should keep serving.
+
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: db,redis

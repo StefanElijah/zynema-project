@@ -59,6 +59,31 @@
             <optional>true</optional>
         </dependency>
 
+        <!--
+          Feign integration (optional). Services that call other services
+          declare the OpenFeign starter themselves; the interceptor and error
+          decoder here are registered by CommonFeignAutoConfiguration.
+        -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Tracing API only (the bridge/exporter live in the services) -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Maps an open circuit breaker to 503 in the shared handlers -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Servlet API for OncePerRequestFilter (provided by the container at runtime) -->
         <dependency>
             <groupId>jakarta.servlet</groupId>

@@ -16,5 +16,5 @@ COPY --from=build /workspace/backend/user-service/target/zynema-user-service.jar
 EXPOSE 8081
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport"
 HEALTHCHECK --interval=15s --timeout=3s --retries=5 --start-period=30s \
-  CMD wget -qO- http://localhost:8081/actuator/health/liveness || exit 1
+  CMD wget -qO- http://localhost:8081/actuator/health/readiness || exit 1
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

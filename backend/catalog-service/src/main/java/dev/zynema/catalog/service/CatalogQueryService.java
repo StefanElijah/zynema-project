@@ -131,6 +131,19 @@ public class CatalogQueryService {
     }
 
     /**
+     * Same detail view, addressed by id. Used by services that hold content ids
+     * rather than slugs (playback sessions, watch history) and by the BFF.
+     *
+     * <p>Shares the detail cache region with a distinguishable key: slugs never
+     * start with {@code id:}, so both lookups coexist and a single eviction
+     * invalidates both.
+     */
+    @Cacheable(cacheNames = CacheConfig.CONTENT_DETAIL, key = "'id:' + #id")
+    public ContentDetailDto getById(UUID id) {
+        return buildDetailById(id);
+    }
+
+    /**
      * Builds the detail view without touching the cache. Used by the write
      * side: reading through {@link #getBySlug(String)} right after a mutation
      * could serve a stale cached entry, because the cache is evicted only
@@ -139,7 +152,16 @@ public class CatalogQueryService {
     public ContentDetailDto buildDetail(String slug) {
         Content content = contentRepository.findBySlug(slug)
             .orElseThrow(() -> new ResourceNotFoundException("Content", slug));
+        return assembleDetail(content);
+    }
 
+    public ContentDetailDto buildDetailById(UUID id) {
+        Content content = contentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Content", id));
+        return assembleDetail(content);
+    }
+
+    private ContentDetailDto assembleDetail(Content content) {
         List<dev.zynema.catalog.dto.SeasonDto> seasons = content.getType() == ContentType.SERIES
             ? seasonRepository.findSeasonSummaries(content.getId()).stream().map(seasonMapper::toDto).toList()
             : List.of();

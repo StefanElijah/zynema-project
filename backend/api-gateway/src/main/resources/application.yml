@@ -67,6 +67,32 @@ management:
     circuitbreakers:
       enabled: true
 
+# Per-route rate limits (token bucket in Redis). Routes omitted here are not
+# limited. A limit that is too tight is worse than no limit: these are sized for
+# a local demo without getting in the way of normal browsing.
+zynema:
+  rate-limit:
+    routes:
+      catalog:
+        # Anonymous traffic keyed by client address: protects the public reads.
+        replenish-rate: 20
+        burst-capacity: 40
+      catalog-admin:
+        replenish-rate: 5
+        burst-capacity: 10
+      user:
+        replenish-rate: 30
+        burst-capacity: 60
+      playback:
+        replenish-rate: 30
+        burst-capacity: 60
+      payment:
+        replenish-rate: 10
+        burst-capacity: 20
+      auth-public:
+        replenish-rate: 5
+        burst-capacity: 10
+
 springdoc:
   api-docs:
     enabled: true

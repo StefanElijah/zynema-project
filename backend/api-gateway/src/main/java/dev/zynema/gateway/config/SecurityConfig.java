@@ -41,6 +41,11 @@ public class SecurityConfig {
             // Browsing the catalogue is anonymous.
             .pathMatchers(HttpMethod.GET, "/api/v1/catalog/**").permitAll()
 
+            // The pricing page must work before signing up. Conservative on
+            // purpose: only GET on the plans collection, nothing else under
+            // /payments is public.
+            .pathMatchers(HttpMethod.GET, "/api/v1/payments/plans").permitAll()
+
             // Login-related endpoints must be reachable before a token exists.
             .pathMatchers("/api/v1/auth/public/**").permitAll()
 

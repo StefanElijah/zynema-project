@@ -1,6 +1,7 @@
 package dev.zynema.common.exception;
 
 import dev.zynema.common.dto.ApiError;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -18,6 +19,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -37,6 +39,38 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ApiError> handleBusiness(BusinessRuleException ex, WebRequest request) {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), request, null, null);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex, WebRequest request) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), request, null, null);
+    }
+
+    /**
+     * The circuit breaker for a dependency is open: the call was never made.
+     * It is a 503 because the service is fine and the dependency is not.
+     */
+    @ExceptionHandler(CallNotPermittedException.class)
+    public ResponseEntity<ApiError> handleCircuitOpen(CallNotPermittedException ex, WebRequest request) {
+        log.warn("Circuit breaker '{}' is open, rejecting the request", ex.getCausingCircuitBreakerName());
+        return build(HttpStatus.SERVICE_UNAVAILABLE,
+            "A dependency is temporarily unavailable (%s)".formatted(ex.getCausingCircuitBreakerName()),
+            request, null, Map.of("dependency", ex.getCausingCircuitBreakerName()));
+    }
+
+    /**
+     * A call to another service failed. The downstream 4xx (conflict, forbidden,
+     * not found) is preserved; anything else becomes 503, because the fault is
+     * upstream of this service.
+     */
+    @ExceptionHandler(DownstreamServiceException.class)
+    public ResponseEntity<ApiError> handleDownstream(DownstreamServiceException ex, WebRequest request) {
+        HttpStatus status = ex.resolveStatus();
+        String message = ex.getDownstreamMessage() != null ? ex.getDownstreamMessage() : ex.getMessage();
+        if (status.is5xxServerError()) {
+            log.warn("Returning {} for a downstream failure on {}: {}", status.value(), ex.getServiceName(), ex.getMessage());
+        }
+        return build(status, message, request, null, Map.of("service", ex.getServiceName()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

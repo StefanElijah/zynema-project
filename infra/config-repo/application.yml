@@ -49,6 +49,39 @@ management:
       show-details: when-authorized
       probes:
         enabled: true
+      group:
+        # Liveness answers "is the process alive": nothing but the app itself.
+        # A database outage must never make an orchestrator restart a service.
+        liveness:
+          include: ping
+        # Readiness answers "can this instance serve traffic": the stateful
+        # dependencies it needs to do its job.
+        #
+        # Only contributors that exist in EVERY consumer belong here — Boot
+        # refuses to start when a group includes an unknown one. Services with a
+        # database add `db` in their own <service-name>.yml file.
+        readiness:
+          include: redis
+          show-details: never
+  # ── Distributed tracing ────────────────────────────────────────────────
+  tracing:
+    # 100% in development. A real deployment samples (e.g. 0.1) and uses
+    # tail-based sampling in the collector.
+    sampling:
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
+  otlp:
+    tracing:
+      # OTLP/HTTP. The signal path is REQUIRED: unlike the OTLP base endpoint,
+      # this property is used verbatim and the exporter does not append
+      # /v1/traces — Tempo answers 404 without it.
+      #
+      # LITERAL value on purpose: this property is read verbatim by the
+      # exporter, so a ${placeholder} served by the config server would be
+      # passed through unresolved and tracing would silently do nothing.
+      # Containers override it with MANAGEMENT_OTLP_TRACING_ENDPOINT
+      # (see docker-compose.yml), which binds with higher precedence.
+      endpoint: http://localhost:4318/v1/traces
+      protocol: http/protobuf
 
 resilience4j:
   circuitbreaker:

@@ -32,3 +32,7 @@ the choice made, and its consequences.
 | 0014 | [Shared security starter in common](0014-shared-security-starter.md)                    | Accepted |
 | 0015 | [Split-horizon Keycloak issuer and audience validation](0015-split-horizon-keycloak.md) | Accepted |
 | 0016 | [Where the SPA keeps its tokens](0016-spa-token-storage.md)                             | Accepted |
+| 0017 | [Idempotency keys for operations that move money](0017-idempotency-keys.md)             | Accepted |
+| 0018 | [Rate limiting at the edge with a Redis token bucket](0018-rate-limiting.md)            | Accepted |
+| 0019 | [Identity propagation between services](0019-identity-propagation.md)                   | Accepted |
+| 0020 | [Version hygiene — let the BOM decide](0020-version-hygiene.md)                         | Accepted |

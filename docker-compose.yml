@@ -20,6 +20,10 @@ x-rest-java: &rest-java
     ZYNEMA_SECURITY_ISSUER_URI: ${ZYNEMA_SECURITY_ISSUER_URI}
     ZYNEMA_SECURITY_JWK_SET_URI: ${ZYNEMA_SECURITY_JWK_SET_URI}
     ZYNEMA_SECURITY_AUDIENCE: ${ZYNEMA_SECURITY_AUDIENCE}
+    # Inside the network Tempo is a service, not localhost. The signal path is
+    # part of the value (see config-repo/application.yml).
+    MANAGEMENT_OTLP_TRACING_ENDPOINT: http://tempo:4318/v1/traces
+    MANAGEMENT_OTLP_TRACING_PROTOCOL: http/protobuf
   depends_on:
     eureka-server:
       condition: service_healthy
@@ -488,6 +492,9 @@ services:
     ports:
       - '${TEMPO_PORT:-4318}:4318'
       - '4317:4317'
+      # Query API: lets you inspect traces from the host
+      # (curl localhost:3200/api/search?tags=service.name=catalog-service)
+      - '${TEMPO_API_PORT:-3200}:3200'
     command: ['-config.file=/etc/tempo.yaml']
     volumes:
       - ./infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro

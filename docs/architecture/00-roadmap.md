@@ -71,15 +71,37 @@ It needs a service account with `manage-users`, a password policy and email
 verification, which only make sense once notification-service and the
 subscription flow exist (Phase 4/7).
 
-## Phase 4 — Domain services and resilience
+## Phase 4 — Domain services and resilience ✅
 
-- [ ] `payment-service` with idempotency keys
-- [ ] `playback-service` with playback sessions
-- [ ] OpenFeign between services with timeouts and fallbacks
-- [ ] Resilience4j: circuit breakers, retries, bulkheads
-- [ ] Rate limiting at the gateway (Bucket4j + Redis)
-- [ ] Deep health checks (DB, Redis, Kafka, Eureka, Keycloak)
-- [ ] Distributed tracing instrumented (OpenTelemetry)
+- [x] `payment-service`: plans, subscriptions, payments and history, with
+      idempotency keys reserved before execution (ADR-0017)
+- [x] `playback-service`: playback sessions with one open session per
+      profile+content, heartbeats, progress relay and a concurrency limit read
+      from the plan's entitlements
+- [x] OpenFeign between services with per-client timeouts, token relay and
+      correlation/trace propagation (ADR-0019)
+- [x] Resilience4j: `@Retry`/`@CircuitBreaker`/`@Bulkhead` composition with
+      explicit degradation (cached identity, free-tier entitlements, best-effort
+      progress) and `503` when the request cannot be authorised
+- [x] Rate limiting at the gateway with the stock Redis token bucket behind a
+      custom filter that keeps the `ApiError` contract (ADR-0018)
+- [x] Deep health checks: `liveness` = process, `readiness` = own dependencies
+      (`db`, `redis`), with the shared group extended per service in the config
+      repo; Docker healthchecks point at `readiness`
+- [x] Distributed tracing instrumented end-to-end (OpenTelemetry + Tempo):
+      servlet, security and Feign spans carry the trace across the gateway and
+      the services, with `traceparent` propagated by the shared interceptor
+- [x] Dependency hygiene: BOM-managed versions restored, overrides only where
+      justified (ADR-0020)
+- [x] Tests: WireMock for downstream failure modes, real Postgres/Redis via
+      Testcontainers, concurrency-safe rate limit tests, idempotency replay
+
+**Lesson worth keeping:** the Config Server was serving nothing for three
+phases — `spring.config.import: optional:configserver:` is silently ignored when
+`spring-cloud-starter-config` is not on the classpath, so the shared properties
+(tracing endpoint among them) never reached the services. Optional imports hide
+missing dependencies; the fix and the runtime verification are recorded in the
+runbook.
 
 ## Phase 5 — BFF (reactive) and CQRS
 

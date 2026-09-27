@@ -3,3 +3,4 @@ dev.zynema.common.config.CommonServletAutoConfiguration
 dev.zynema.common.config.CommonReactiveAutoConfiguration
 dev.zynema.common.config.CommonSecurityAutoConfiguration
 dev.zynema.common.config.CommonReactiveSecurityAutoConfiguration
+dev.zynema.common.config.CommonFeignAutoConfiguration

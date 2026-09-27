@@ -33,6 +33,21 @@ public class ReactiveGlobalExceptionHandler {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), exchange, null, null);
     }
 
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiError> handleConflict(ConflictException ex, ServerWebExchange exchange) {
+        return build(HttpStatus.CONFLICT, ex.getMessage(), exchange, null, null);
+    }
+
+    @ExceptionHandler(DownstreamServiceException.class)
+    public ResponseEntity<ApiError> handleDownstream(DownstreamServiceException ex, ServerWebExchange exchange) {
+        HttpStatus status = ex.resolveStatus();
+        String message = ex.getDownstreamMessage() != null ? ex.getDownstreamMessage() : ex.getMessage();
+        if (status.is5xxServerError()) {
+            log.warn("Returning {} for a downstream failure on {}: {}", status.value(), ex.getServiceName(), ex.getMessage());
+        }
+        return build(status, message, exchange, null, java.util.Map.of("service", ex.getServiceName()));
+    }
+
     @ExceptionHandler(WebExchangeBindException.class)
     public ResponseEntity<ApiError> handleValidation(WebExchangeBindException ex, ServerWebExchange exchange) {
         List<ApiError.FieldViolation> violations = ex.getBindingResult().getFieldErrors().stream()

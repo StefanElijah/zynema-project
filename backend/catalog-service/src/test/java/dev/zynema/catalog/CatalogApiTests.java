@@ -165,6 +165,34 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
             .andExpect(status().isNotFound());
     }
 
+    @Test
+    @DisplayName("GET /contents/{id} resolves any title by id, anonymously")
+    void getContentById() throws Exception {
+        String id = idOf("arcane");
+
+        mockMvc.perform(get("/api/v1/catalog/contents/" + id))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id", is(id)))
+            .andExpect(jsonPath("$.title", is("Arcane")))
+            .andExpect(jsonPath("$.type", is("SERIES")))
+            .andExpect(jsonPath("$.seasons", hasSize(2)));
+    }
+
+    @Test
+    @DisplayName("GET /contents/{id} returns 404 for an unknown id")
+    void unknownContentIdIsNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/contents/00000000-0000-4000-8000-000000000000"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error", is("Not Found")));
+    }
+
+    @Test
+    @DisplayName("GET /contents/{id} with a malformed id is a 400")
+    void malformedContentIdIsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/contents/not-a-uuid"))
+            .andExpect(status().isBadRequest());
+    }
+
     // ────────────────────────────── writes ────────────────────────────
 
     @Test
@@ -291,10 +319,14 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
             .andExpect(status().isOk());
     }
 
+    /** Resolves a seeded title's id, whichever type it belongs to. */
     private String idOf(String slug) throws Exception {
-        String body = mockMvc.perform(get("/api/v1/catalog/movies/" + slug))
-            .andExpect(status().isOk())
-            .andReturn().getResponse().getContentAsString();
-        return com.jayway.jsonpath.JsonPath.read(body, "$.id");
+        var result = mockMvc.perform(get("/api/v1/catalog/movies/" + slug)).andReturn();
+        if (result.getResponse().getStatus() != 200) {
+            result = mockMvc.perform(get("/api/v1/catalog/series/" + slug)).andReturn();
+        }
+        org.springframework.test.util.AssertionErrors.assertEquals(
+            "expected a seeded title with slug " + slug, 200, result.getResponse().getStatus());
+        return com.jayway.jsonpath.JsonPath.read(result.getResponse().getContentAsString(), "$.id");
     }
 }

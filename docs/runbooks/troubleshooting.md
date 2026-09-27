@@ -263,6 +263,106 @@ already run. Both values are identical because the gateway propagates the id in
 the request. Repeated headers with the same value are valid HTTP and readers
 take the first, so this is cosmetic.
 
+## **[F4] Nothing from the Config Server reaches the services**
+
+Symptom: `/actuator/env` shows no `configserver` property source, the shared
+properties (tracing endpoint, health groups, security settings) have no effect,
+and the Config Server logs no requests. Nothing fails: the app starts with its
+local `application.yml` and _looks_ healthy.
+
+Cause: `spring.config.import: optional:configserver:...` is **silently skipped**
+when `spring-cloud-starter-config` is not on the classpath. `optional:` turns a
+missing server into a non-event, so a missing _client_ is invisible too. This
+went unnoticed for three phases.
+
+Fix: the dependency must be declared — it is already added to all eight
+config-consuming services:
+
+```xml
+<dependency>
+    <groupId>org.springframework.cloud</groupId>
+    <artifactId>spring-cloud-starter-config</artifactId>
+</dependency>
+```
+
+Verify after restarting: the service logs `Fetching config from server at ...`,
+and `/actuator/env` lists a `configserver:.../application.yml` property source.
+As a sanity check, the Config Server log should show one request per service at
+startup. When in doubt about which properties are actually active, trust
+`/actuator/env` over the repository files.
+
+## **[F4] "Included health contributor 'X' in group 'readiness' does not exist"**
+
+Symptom: a service fails to start with that `APPLICATION FAILED TO START`
+report, right after the shared config starts being consumed.
+
+Cause: the health group is defined once for every service, but Boot refuses to
+start when a group names an indicator the service does not have. `db` exists in
+the services with a database, not in `api-gateway` or `bff-service`.
+
+Fix: keep in the shared `application.yml` only what **every** consumer has
+(`redis`), and extend the group per service in `infra/config-repo/<name>.yml`:
+
+```yaml
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: db,redis
+```
+
+The `api-gateway` and `bff-service` simply do not add the `db` file. Remember a
+local `application.yml` cannot override the shared value: config-server
+properties win, which is exactly why the exception lives in the repository.
+
+## **[F4] Tempo answers 404 on the OTLP endpoint**
+
+Symptom: spans never arrive and the exporter logs `404 Not Found`.
+
+Cause: with `http/protobuf`, Micrometer appends only the signal path if the
+endpoint already ends in `/v1/traces`; pointing it at `http://tempo:4318`
+leaves the request at the root, which Tempo does not serve.
+
+Fix: use the full signal path, `http://tempo:4318/v1/traces`. Docker and local
+runs differ only in the host, and the property is a literal in the config repo
+(a placeholder cannot be resolved by the OTLP autoconfiguration at startup).
+
+## **[F4] The circuit breaker never opens on a Feign client**
+
+Symptom: the resilience4j instance for a downstream call stays closed while the
+dependency is down, or the instance registered in `/actuator/circuitbreakers`
+has an unexpected name.
+
+Causes, both of which bit us:
+
+- With the OpenFeign integration enabled, the annotation-less client gets an
+  instance named after the generated delegate (`UserServiceClientcurrentUser`),
+  which is not the name you configure. We disable the integration
+  (`spring.cloud.openfeign.circuitbreaker.enabled: false`) and annotate the calls
+  explicitly with `@CircuitBreaker(name = "user-service")`, `@Retry` and
+  `@Bulkhead`, so the instance name is a decision rather than a generated
+  string. Do not draw conclusions from a single call: the breaker needs
+  `minimumNumberOfCalls` failures before it is observable.
+- Adding `contextId` to `@FeignClient` changes the configuration key and can
+  silently disconnect the client from its custom configuration. Remove it and
+  keep one client per target.
+
+## **[F4] Hibernate validations fail on a column that "looks" right**
+
+Symptom: `Schema-validation: wrong column type ... found [char], expecting
+[varchar]` on startup, usually for a three-letter column such as `currency` or
+`region`.
+
+Cause: `CHAR(3)` and `VARCHAR(3)` are different types to Hibernate's validator,
+and the entity was annotated `length = 3`, which maps to `varchar`.
+
+Fix: either change the migration to `VARCHAR(3)` or annotate the field
+(`columnDefinition = "char(3)"`). Prefer the migration: PostgreSQL pads `CHAR`
+with spaces, and a padded `"MXN"` breaks equality comparisons. Also note the
+migration edit is not picked up by an incremental build — recompile with
+`clean`.
+
 ## "Service X won't start in Docker"
 
 1. Check the logs: `docker compose logs -f <service>`.

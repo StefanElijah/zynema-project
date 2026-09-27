@@ -24,11 +24,64 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  cache:
+    type: redis
+    redis:
+      time-to-live: 10m
+      cache-null-values: false
+      key-prefix: 'zynema:payment:'
+  cloud:
+    openfeign:
+      circuitbreaker:
+        # Left off on purpose: the integration names its instance after the
+        # generated client type and method, which makes the tuning below
+        # unreachable. The circuit breaker is declared with @CircuitBreaker on
+        # the calling service so its name stays stable ("user-service").
+        enabled: false
+      client:
+        config:
+          default:
+            connectTimeout: 1000
+            # Also the time bound of the call: a blocking HTTP call does not
+            # need Resilience4j's TimeLimiter on top.
+            readTimeout: 3000
   # Security settings (issuer, JWKS, audience) are shared by every service
   # and live in the config repository: see zynema.security.* in
   # infra/config-repo/application.yml. Authorization rules live in SecurityConfig.
   config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
+
+# Per-dependency resilience policies. Composition, from outside in:
+#   @Retry( @CircuitBreaker( @Bulkhead( HTTP call ) ) )
+resilience4j:
+  circuitbreaker:
+    instances:
+      user-service:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
+        slowCallDurationThreshold: 2s
+        slowCallRateThreshold: 80
+  retry:
+    instances:
+      user-service:
+        maxAttempts: 3
+        waitDuration: 200ms
+        # Only transient transport failures are retried. Retrying 4xx would
+        # repeat a rejected request, and retrying 5xx can amplify an outage.
+        retryExceptions:
+          - feign.RetryableException
+        ignoreExceptions:
+          - dev.zynema.common.exception.DownstreamServiceException
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+  bulkhead:
+    instances:
+      user-service:
+        maxConcurrentCalls: 20
+        maxWaitDuration: 50ms
+
 server:
   port: 8084
   shutdown: graceful
