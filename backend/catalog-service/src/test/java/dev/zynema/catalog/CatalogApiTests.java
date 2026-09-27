@@ -7,7 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
@@ -15,6 +17,7 @@ import java.util.Objects;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -40,6 +43,16 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     @BeforeEach
     void clearCaches() {
         cacheManager.getCacheNames().forEach(name -> Objects.requireNonNull(cacheManager.getCache(name)).clear());
+    }
+
+    /** Authenticated caller holding the content-manager realm role. */
+    private static RequestPostProcessor asContentManager() {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_content-manager"));
+    }
+
+    /** Authenticated caller with no management role. */
+    private static RequestPostProcessor asPlainUser() {
+        return jwt().authorities(new SimpleGrantedAuthority("ROLE_user"));
     }
 
     // ────────────────────────────── reads ─────────────────────────────
@@ -158,6 +171,7 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     @DisplayName("POST admin creates an entry")
     void createContent() throws Exception {
         mockMvc.perform(post("/api/v1/catalog/admin/contents")
+                .with(asContentManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -180,6 +194,7 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     @DisplayName("POST admin rejects an invalid payload with field violations")
     void createContentRejectsInvalidPayload() throws Exception {
         mockMvc.perform(post("/api/v1/catalog/admin/contents")
+                .with(asContentManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -200,6 +215,7 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
         String id = idOf("the-matrix");
 
         mockMvc.perform(put("/api/v1/catalog/admin/contents/" + id)
+                .with(asContentManager())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {
@@ -218,11 +234,61 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     void deleteContent() throws Exception {
         String id = idOf("gladiator");
 
-        mockMvc.perform(delete("/api/v1/catalog/admin/contents/" + id))
+        mockMvc.perform(delete("/api/v1/catalog/admin/contents/" + id).with(asContentManager()))
             .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/catalog/movies/gladiator"))
             .andExpect(status().isNotFound());
+    }
+
+    // ─────────────────────── authorization matrix ──────────────────────
+
+    @Test
+    @DisplayName("anonymous callers cannot write, even to the admin API")
+    void anonymousWritesAreRejected() throws Exception {
+        mockMvc.perform(post("/api/v1/catalog/admin/contents")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"type": "MOVIE", "title": "Nope", "slug": "nope"}
+                    """))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error", is("Unauthorized")));
+    }
+
+    @Test
+    @DisplayName("an authenticated caller without the role gets 403, not 401")
+    void authenticatedWithoutRoleIsForbidden() throws Exception {
+        mockMvc.perform(post("/api/v1/catalog/admin/contents")
+                .with(asPlainUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"type": "MOVIE", "title": "Nope", "slug": "nope"}
+                    """))
+            .andExpect(status().isForbidden())
+            .andExpect(jsonPath("$.error", is("Forbidden")));
+    }
+
+    @Test
+    @DisplayName("the admin role also grants content management")
+    void adminRoleCanManageContent() throws Exception {
+        mockMvc.perform(post("/api/v1/catalog/admin/contents")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ROLE_admin")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"type": "MOVIE", "title": "By Admin", "slug": "by-admin", "genreSlugs": ["drama"]}
+                    """))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.slug", is("by-admin")));
+    }
+
+    @Test
+    @DisplayName("the public read API stays anonymous")
+    void publicReadsStayAnonymous() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/movies").param("size", "1"))
+            .andExpect(status().isOk());
+
+        mockMvc.perform(get("/actuator/health"))
+            .andExpect(status().isOk());
     }
 
     private String idOf(String slug) throws Exception {

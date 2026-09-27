@@ -33,6 +33,16 @@ eureka:
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
 
+# ── Security (identical in every service, hence shared) ──────────────────
+# Issuer is the public URL that ends up in the `iss` claim and is what the
+# browser uses. JWKS may live at a different, internal URL (ADR-0015).
+# Both fall back to the local Keycloak when these are not set.
+zynema:
+  security:
+    issuer-uri: ${ZYNEMA_SECURITY_ISSUER_URI:http://localhost:8180/realms/zynema}
+    jwk-set-uri: ${ZYNEMA_SECURITY_JWK_SET_URI:http://localhost:8180/realms/zynema/protocol/openid-connect/certs}
+    audience: ${ZYNEMA_SECURITY_AUDIENCE:zynema-api}
+
 management:
   endpoint:
     health:

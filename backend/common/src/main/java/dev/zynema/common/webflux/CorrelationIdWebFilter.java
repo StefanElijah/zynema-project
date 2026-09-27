@@ -2,6 +2,7 @@ package dev.zynema.common.webflux;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
@@ -32,8 +33,14 @@ public class CorrelationIdWebFilter implements WebFilter {
             correlationId = UUID.randomUUID().toString();
         }
         final String cid = correlationId;
-        exchange.getResponse().getHeaders().add(HEADER, cid);
-        return chain.filter(exchange)
+
+        // The id must travel downstream in the request, not only back to the
+        // client: otherwise every service in the graph generates its own and
+        // the response ends up with several conflicting headers.
+        ServerHttpRequest request = exchange.getRequest().mutate().header(HEADER, cid).build();
+        exchange.getResponse().getHeaders().set(HEADER, cid);
+
+        return chain.filter(exchange.mutate().request(request).build())
             .contextWrite(ctx -> ctx.put(CONTEXT_KEY, cid));
     }
 }

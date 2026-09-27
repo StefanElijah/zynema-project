@@ -1,6 +1,7 @@
 import axios from 'axios';
+import { userManager } from '../auth/userManager';
 
-const baseURL = import.meta.env.VITE_BFF_URL || '/api';
+const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 export const apiClient = axios.create({
   baseURL,
@@ -8,19 +9,40 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('zynema.access_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+apiClient.interceptors.request.use(async (config) => {
+  const user = await userManager.getUser();
+  if (user?.access_token && !user.expired) {
+    config.headers.Authorization = `Bearer ${user.access_token}`;
+  }
   return config;
 });
 
 apiClient.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('zynema.access_token');
-      window.location.href = '/auth/login';
+  (response) => response,
+  async (error) => {
+    const status = error.response?.status;
+    const original = error.config;
+
+    if (status !== 401 || !original || original._retried) {
+      return Promise.reject(error);
     }
-    return Promise.reject(err);
+    original._retried = true;
+
+    const user = await userManager.getUser();
+    if (!user) {
+      // Nobody is signed in: send the user through the login flow.
+      await userManager.signinRedirect({ state: { returnTo: window.location.pathname } });
+      return Promise.reject(error);
+    }
+
+    try {
+      // The token may simply have expired between the check and the request.
+      const renewed = await userManager.signinSilent();
+      original.headers.Authorization = `Bearer ${renewed.access_token}`;
+      return apiClient.request(original);
+    } catch (renewError) {
+      await userManager.signinRedirect({ state: { returnTo: window.location.pathname } });
+      return Promise.reject(renewError);
+    }
   }
 );

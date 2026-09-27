@@ -181,6 +181,88 @@ Fix: `common` handles them explicitly. Note that
 not depend on. The catch-all therefore checks
 `ex instanceof ErrorResponse` and reuses its status for 4xx.
 
+## **[F3] Keycloak import fails: "Unrecognized field postLogoutRedirectUris"**
+
+Symptom: the container starts and immediately exits with
+`Failed to import realms` and `Unrecognized field "postLogoutRedirectUris"`.
+
+Cause: in a realm export, post-logout redirect URIs are **not** a top-level
+client field. The importer rejects the whole file.
+
+Fix: put them in `attributes`:
+
+```json
+"attributes": {
+  "pkce.code.challenge.method": "S256",
+  "post.logout.redirect.uris": "http://localhost:5173/*"
+}
+```
+
+## **[F3] "Port 8081 was already in use" when running user-service locally**
+
+Symptom: user-service fails to start on the host; Keycloak is running.
+
+Cause: Keycloak was published on host port 8081, which is user-service's port.
+
+Fix: Keycloak now publishes **8180** (`KC_HOSTNAME=http://localhost:8180`).
+Ports 8080–8087 belong to the services; keep Keycloak out of that range.
+
+## **[F3] Every authenticated request returns 401 after changing Keycloak's URL**
+
+Symptom: tokens are issued fine, the SPA logs in, but every API call answers
+401 with `invalid_token`.
+
+Cause: the `iss` claim no longer matches `zynema.security.issuer-uri` (usually
+because Keycloak's `KC_HOSTNAME` or host port changed).
+
+Fix: the public issuer must be identical in three places — `KC_HOSTNAME`,
+`ZYNEMA_SECURITY_ISSUER_URI` and the SPA's `VITE_KEYCLOAK_URL`. The JWKS URI can
+stay internal (ADR-0015). To confirm, decode the token and compare `iss`:
+
+```bash
+curl -s -X POST http://localhost:8180/realms/zynema/protocol/openid-connect/token \
+  -d grant_type=password -d client_id=zynema-cli \
+  -d client_secret=zynema-cli-dev-secret -d username=demo -d password=demo \
+  | jq -r .access_token | cut -d. -f2 | base64 -d 2>/dev/null | jq .iss
+```
+
+## **[F3] A request to a stopped service returns 500 instead of 503**
+
+Symptom: calling a route whose service is not registered returns
+`"status": 500` with "Internal server error".
+
+Cause: the catch-all exception handler collapsed the gateway's routing failure
+(which already carries 503) into a generic 500.
+
+Fix: both exception handlers now honour 4xx **and** 5xx statuses carried by
+framework exceptions that implement `ErrorResponse`. A down dependency must look
+like a down dependency.
+
+## **[F3] Actuator and Swagger became protected after adding a custom security chain**
+
+Symptom: Prometheus can no longer scrape `/actuator/prometheus`; Swagger UI
+redirects to a login.
+
+Cause: a service that declares its own `SecurityFilterChain` replaces the
+default one, and the default one is what made those paths public.
+
+Fix: every explicit chain starts with the shared lists:
+
+```java
+.requestMatchers(ZynemaSecurityPaths.PUBLIC_OPERATIONS).permitAll()
+.requestMatchers(ZynemaSecurityPaths.PUBLIC_API_DOCS).permitAll()
+```
+
+## **[F3] Responses carry X-Correlation-Id twice**
+
+Symptom: `curl -D -` shows two `X-Correlation-Id` headers.
+
+Cause: the gateway sets it on the response and the downstream service echoes it
+back; the gateway merges the downstream headers after its dedupe filter has
+already run. Both values are identical because the gateway propagates the id in
+the request. Repeated headers with the same value are valid HTTP and readers
+take the first, so this is cosmetic.
+
 ## "Service X won't start in Docker"
 
 1. Check the logs: `docker compose logs -f <service>`.

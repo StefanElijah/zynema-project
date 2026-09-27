@@ -21,13 +21,11 @@ export default defineConfig({
     port: 5173,
     host: '0.0.0.0',
     proxy: {
+      // The SPA always talks to the API gateway, which is the single entry
+      // point; the BFF and the domain services sit behind it. No rewrite: the
+      // gateway routes the versioned paths (/api/v1/...).
       '/api': {
-        target: 'http://localhost:8086',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/auth': {
-        target: 'http://localhost:8081',
+        target: 'http://localhost:8080',
         changeOrigin: true,
       },
     },
@@ -42,5 +40,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.js'],
     css: false,
+    // Unit/component tests live next to the source; the Playwright specs under
+    // tests/e2e are driven by a different runner and must not be picked up.
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
+    exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**'],
   },
 });

@@ -1,8 +1,11 @@
 # ADR-0002: Keycloak como IdP desde el día 1
 
-- **Status:** Accepted
+- **Status:** Accepted — implemented in Fase 3
 - **Date:** 2026-07-09
 - **Deciders:** Project owner
+- **Implemented by:** [ADR-0014](0014-shared-security-starter.md) (shared
+  security starter), [ADR-0015](0015-split-horizon-keycloak.md) (issuer and
+  audience handling), [ADR-0016](0016-spa-token-storage.md) (SPA tokens)
 
 ## Context
 
@@ -12,6 +15,7 @@ using JWTs signed with a static key, then had to migrate to a real IdP
 (Keycloak, Auth0, Cognito) once the project grew.
 
 The pain of that migration is significant:
+
 - Token claims change.
 - The way you propagate identity through services changes.
 - Tests need to be rewritten.

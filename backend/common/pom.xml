@@ -40,6 +40,25 @@
             <optional>true</optional>
         </dependency>
 
+        <!--
+          Security infrastructure (optional). Brings spring-security-config, -web
+          (which also holds the reactive web.server classes) and
+          spring-security-oauth2-resource-server. Every service declares this
+          starter itself, so it never leaks transitively.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- JSON for the 401/403 ApiError bodies (provided by every web service) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Servlet API for OncePerRequestFilter (provided by the container at runtime) -->
         <dependency>
             <groupId>jakarta.servlet</groupId>
@@ -68,6 +87,11 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

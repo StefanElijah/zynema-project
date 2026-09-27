@@ -4,6 +4,7 @@ import dev.zynema.common.dto.ApiError;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
@@ -42,6 +43,19 @@ public class ReactiveGlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, ServerWebExchange exchange) {
+        // Framework exceptions that already carry a status must keep it.
+        // Gateway routing failures (no instance available) surface as
+        // ErrorResponse with 503; collapsing them into 500 would tell the
+        // client "we are broken" when the truth is "that dependency is down".
+        if (ex instanceof ErrorResponse errorResponse) {
+            HttpStatus status = HttpStatus.resolve(errorResponse.getStatusCode().value());
+            if (status != null) {
+                if (status.is5xxServerError()) {
+                    log.warn("Upstream failure mapped to {}: {}", status, ex.getMessage());
+                }
+                return build(status, status.getReasonPhrase(), exchange, null, null);
+            }
+        }
         log.error("Unhandled exception in reactive pipeline", ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", exchange, null, null);
     }

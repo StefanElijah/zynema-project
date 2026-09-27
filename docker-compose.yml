@@ -1,4 +1,4 @@
-﻿# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Docker Compose â€” zynema-project
 # Local production-grade simulation.
 # All services use profiles to manage RAM usage on 8-16GB dev machines.
@@ -13,8 +13,13 @@ x-rest-java: &rest-java
     SPRING_PROFILES_ACTIVE: docker
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_DEFAULT_ZONE}
     SPRING_CLOUD_CONFIG_URI: ${CONFIG_SERVER_URL}
-    SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+    SPRING_CLOUD_CONFIG_FAIL_FAST: 'false'
     SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL: 3000
+    # Split-horizon issuer (ADR-0015): validate the public issuer, fetch keys
+    # from the internal Keycloak service name.
+    ZYNEMA_SECURITY_ISSUER_URI: ${ZYNEMA_SECURITY_ISSUER_URI}
+    ZYNEMA_SECURITY_JWK_SET_URI: ${ZYNEMA_SECURITY_JWK_SET_URI}
+    ZYNEMA_SECURITY_AUDIENCE: ${ZYNEMA_SECURITY_AUDIENCE}
   depends_on:
     eureka-server:
       condition: service_healthy
@@ -29,7 +34,7 @@ x-rest-java-no-config: &rest-java-no-config
     SPRING_PROFILES_ACTIVE: docker
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_DEFAULT_ZONE}
     SPRING_CLOUD_CONFIG_URI: ${CONFIG_SERVER_URL}
-    SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+    SPRING_CLOUD_CONFIG_FAIL_FAST: 'false'
     SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL: 3000
   depends_on:
     eureka-server:
@@ -42,7 +47,7 @@ x-eureka: &eureka
   environment:
     SPRING_PROFILES_ACTIVE: docker
   healthcheck:
-    test: ["CMD", "curl", "-fsS", "http://localhost:8761/actuator/health"]
+    test: ['CMD', 'curl', '-fsS', 'http://localhost:8761/actuator/health']
     interval: 10s
     timeout: 5s
     retries: 5
@@ -53,15 +58,15 @@ services:
 
   eureka-server:
     <<: *eureka
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/eureka-server/Dockerfile
     container_name: zynema-eureka
     ports:
-      - "8761:8761"
+      - '8761:8761'
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8761/actuator/health"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8761/actuator/health']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -69,13 +74,13 @@ services:
 
   config-server:
     <<: *rest-java-no-config
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/config-server/Dockerfile
     container_name: zynema-config
     ports:
-      - "8888:8888"
+      - '8888:8888'
     environment:
       SPRING_PROFILES_ACTIVE: docker,native
       SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS: file:/config-repo/
@@ -84,7 +89,7 @@ services:
     volumes:
       - ./infra/config-repo:/config-repo
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8888/actuator/health"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8888/actuator/health']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -92,69 +97,69 @@ services:
 
   api-gateway:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/api-gateway/Dockerfile
     container_name: zynema-gateway
     ports:
-      - "8080:8080"
+      - '8080:8080'
     environment:
       <<: *rest-java-env
       SERVER_PORT: 8080
-      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_ENABLED: "true"
-      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_LOWER-CASE_SERVICE_ID: "true"
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_ENABLED: 'true'
+      SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_LOWER-CASE_SERVICE_ID: 'true'
 
   # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DATA LAYER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   postgres:
-    profiles: ["core"]
+    profiles: ['core']
     image: postgres:16-alpine
     container_name: zynema-postgres
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "5432:5432"
+      - '5432:5432'
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_MULTIPLE_DATABASES: "${POSTGRES_DB_CATALOG},${POSTGRES_DB_USER},${POSTGRES_DB_PAYMENT},${POSTGRES_DB_PLAYBACK},${POSTGRES_DB_AUTH},${POSTGRES_DB_NOTIFICATION}"
+      POSTGRES_MULTIPLE_DATABASES: '${POSTGRES_DB_CATALOG},${POSTGRES_DB_USER},${POSTGRES_DB_PAYMENT},${POSTGRES_DB_PLAYBACK},${POSTGRES_DB_AUTH},${POSTGRES_DB_NOTIFICATION}'
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./infra/scripts/postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
       interval: 5s
       timeout: 3s
       retries: 5
 
   redis:
-    profiles: ["core"]
+    profiles: ['core']
     image: redis:7-alpine
     container_name: zynema-redis
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "6379:6379"
-    command: ["redis-server", "--appendonly", "yes"]
+      - '6379:6379'
+    command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 5
 
   kafka:
-    profiles: ["core"]
+    profiles: ['core']
     image: confluentinc/cp-kafka:7.6.1
     container_name: zynema-kafka
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "9092:9092"
-      - "29092:29092"
+      - '9092:9092'
+      - '29092:29092'
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -167,25 +172,25 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
       CLUSTER_ID: zynema-cluster
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "kafka:9092"]
+      test: ['CMD', 'kafka-broker-api-versions', '--bootstrap-server', 'kafka:9092']
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 20s
 
   schema-registry:
-    profiles: ["core"]
+    profiles: ['core']
     image: confluentinc/cp-schema-registry:7.6.1
     container_name: zynema-schema-registry
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "8085:8081"
+      - '8085:8081'
     environment:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:9092
@@ -197,7 +202,7 @@ services:
 
   catalog-service:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/catalog-service/Dockerfile
@@ -210,7 +215,7 @@ services:
 
   user-service:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/user-service/Dockerfile
@@ -223,7 +228,7 @@ services:
 
   payment-service:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/payment-service/Dockerfile
@@ -236,7 +241,7 @@ services:
 
   playback-service:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/playback-service/Dockerfile
@@ -252,7 +257,7 @@ services:
 
   auth-service:
     <<: *rest-java
-    profiles: ["auth"]
+    profiles: ['auth']
     build:
       context: .
       dockerfile: ./backend/auth-service/Dockerfile
@@ -262,14 +267,14 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB_AUTH}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}
-      KEYCLOAK_ADMIN_URL: ${KEYCLOAK_URL}
+      # Token validation settings come from the shared anchor
+      # (ZYNEMA_SECURITY_ISSUER_URI / JWK_SET_URI).
     depends_on:
       keycloak:
         condition: service_started
 
   frontend:
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./frontend/Dockerfile
@@ -277,24 +282,25 @@ services:
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "5173:80"
+      - '5173:80'
     depends_on:
       - api-gateway
 
   bff-service:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/bff-service/Dockerfile
     container_name: zynema-bff
     environment:
       <<: *rest-java-env
-      KEYCLOAK_ISSUER_URI: ${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}
+      # Token validation is wired by the shared anchor; the OAuth2 client
+      # registration for downstream calls lands in Fase 5.
 
   notification-service:
     <<: *rest-java
-    profiles: ["core"]
+    profiles: ['core']
     build:
       context: .
       dockerfile: ./backend/notification-service/Dockerfile
@@ -310,62 +316,73 @@ services:
   # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AUTH â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   keycloak:
-    profiles: ["auth"]
+    profiles: ['auth']
     image: quay.io/keycloak/keycloak:25.0
     container_name: zynema-keycloak
-    command: ["start-dev", "--import-realm", "--http-port=8080"]
+    command: ['start-dev', '--import-realm', '--http-port=8080']
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "8081:8080"
+      - '8180:8080'
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_HEALTH_ENABLED: "true"
+      KC_HEALTH_ENABLED: 'true'
+      KC_HTTP_ENABLED: 'true'
+      # Public issuer: tokens always carry this URL, whether the request came
+      # from the browser (localhost:8180) or from a service on the internal
+      # network (keycloak:8080). Resource servers validate the issuer but fetch
+      # JWKS from the internal URL — see ADR-0015.
+      # Host port 8180 on purpose: 8080-8087 are taken by the services.
+      KC_HOSTNAME: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8180}
     volumes:
       - ./infra/keycloak/realm-export:/opt/keycloak/data/import
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3"]
+      test:
+        [
+          'CMD-SHELL',
+          "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q '\"status\": \"UP\"' <&3",
+        ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 60s
 
   mailhog:
-    profiles: ["auth"]
+    profiles: ['auth']
     image: mailhog/mailhog:latest
     container_name: zynema-mailhog
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "1025:1025"
-      - "8025:8025"
+      - '1025:1025'
+      - '8025:8025'
 
   # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STORAGE / VIDEO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   minio:
-    profiles: ["storage"]
+    profiles: ['storage']
     image: minio/minio:latest
     container_name: zynema-minio
-    command: ["server", "/data", "--console-address", ":9001"]
+    command: ['server', '/data', '--console-address', ':9001']
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - '9000:9000'
+      - '9001:9001'
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - minio-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 10s
       timeout: 5s
       retries: 5
 
   minio-init:
-    profiles: ["storage"]
+    profiles: ['storage']
     image: minio/mc:latest
     container_name: zynema-minio-init
     depends_on:
@@ -382,13 +399,13 @@ services:
       "
 
   nginx-hls:
-    profiles: ["storage"]
+    profiles: ['storage']
     image: nginx:1.27-alpine
     container_name: zynema-nginx-hls
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "${NGINX_HLS_PORT:-8090}:80"
+      - '${NGINX_HLS_PORT:-8090}:80'
     volumes:
       - ./infra/nginx/hls.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
@@ -398,37 +415,37 @@ services:
   # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• OBSERVABILITY (PLG + Tempo) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
   prometheus:
-    profiles: ["observability"]
+    profiles: ['observability']
     image: prom/prometheus:latest
     container_name: zynema-prometheus
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "${PROMETHEUS_PORT:-9090}:9090"
+      - '${PROMETHEUS_PORT:-9090}:9090'
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--web.enable-lifecycle"
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
     volumes:
       - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:9090/-/healthy']
       interval: 10s
       timeout: 3s
       retries: 3
 
   grafana:
-    profiles: ["observability"]
+    profiles: ['observability']
     image: grafana/grafana:latest
     container_name: zynema-grafana
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "${GRAFANA_PORT:-3000}:3000"
+      - '${GRAFANA_PORT:-3000}:3000'
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
-      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_ALLOW_SIGN_UP: 'false'
     volumes:
       - ./infra/observability/grafana-provisioning:/etc/grafana/provisioning:ro
       - ./infra/observability/grafana-dashboards:/var/lib/grafana/dashboards:ro
@@ -439,20 +456,20 @@ services:
       - tempo
 
   loki:
-    profiles: ["observability"]
+    profiles: ['observability']
     image: grafana/loki:2.9.8
     container_name: zynema-loki
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "${LOKI_PORT:-3100}:3100"
-    command: ["-config.file=/etc/loki/local-config.yaml"]
+      - '${LOKI_PORT:-3100}:3100'
+    command: ['-config.file=/etc/loki/local-config.yaml']
     volumes:
       - ./infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro
       - loki-data:/loki
 
   promtail:
-    profiles: ["observability"]
+    profiles: ['observability']
     image: grafana/promtail:2.9.8
     container_name: zynema-promtail
     restart: unless-stopped
@@ -463,15 +480,15 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   tempo:
-    profiles: ["observability"]
+    profiles: ['observability']
     image: grafana/tempo:2.5.0
     container_name: zynema-tempo
     restart: unless-stopped
     networks: [zynema-net]
     ports:
-      - "${TEMPO_PORT:-4318}:4318"
-      - "4317:4317"
-    command: ["-config.file=/etc/tempo.yaml"]
+      - '${TEMPO_PORT:-4318}:4318'
+      - '4317:4317'
+    command: ['-config.file=/etc/tempo.yaml']
     volumes:
       - ./infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro
       - tempo-data:/var/tempo

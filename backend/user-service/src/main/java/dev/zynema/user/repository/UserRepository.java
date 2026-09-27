@@ -13,6 +13,11 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByKeycloakSubject(String keycloakSubject);
+
+    @EntityGraph(attributePaths = {"profiles"})
+    Optional<User> findWithProfilesByKeycloakSubject(String keycloakSubject);
+
     @EntityGraph(attributePaths = {"profiles"})
     Optional<User> findWithProfilesById(UUID id);
 

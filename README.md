@@ -196,7 +196,7 @@ make up          # core + auth
 
 # 7. Open dashboards
 # Eureka:    http://localhost:8761
-# Keycloak:  http://localhost:8081  (admin / $KEYCLOAK_ADMIN_PASSWORD)
+# Keycloak:  http://localhost:8180  (admin / $KEYCLOAK_ADMIN_PASSWORD)
 ```
 
 ### Optional profiles
@@ -210,33 +210,92 @@ make up-full      # core + auth + storage + observability (~5GB RAM)
 Flyway seeds the catalog and one demo account on first boot, so the API is
 usable immediately:
 
-| Data                             | Count                                   |
-| -------------------------------- | --------------------------------------- |
-| Genres                           | 15                                      |
-| Titles (28 movies + 24 series)   | 52                                      |
-| People / credits                 | 72 / 80                                 |
-| Seasons / episodes               | 80 / 48                                 |
-| Demo account (`demo@zynema.dev`) | 1 user, 2 profiles, watchlist + history |
+| Data                               | Count                                   |
+| ---------------------------------- | --------------------------------------- |
+| Genres                             | 15                                      |
+| Titles (28 movies + 24 series)     | 52                                      |
+| People / credits                   | 72 / 80                                 |
+| Seasons / episodes                 | 80 / 48                                 |
+| Seeded account (`demo@zynema.dev`) | 1 user, 2 profiles, watchlist + history |
 
 The 25 titles that ship with local artwork under `frontend/public/assets/`
 carry real poster/backdrop paths; the rest have `null` assets on purpose, which
 exercises the frontend's fallback handling.
 
+## Authentication
+
+Keycloak is the identity provider from the first commit (ADR-0002). The realm
+is versioned at `infra/keycloak/realm-export/zynema-realm.json` and imported on
+container start, so `docker compose --profile core --profile auth up -d` gives
+you a working IdP plus three users.
+
+| User      | Password  | Realm roles               | Use                                          |
+| --------- | --------- | ------------------------- | -------------------------------------------- |
+| `demo`    | `demo`    | `user`                    | Default viewer, linked to the seeded account |
+| `manager` | `manager` | `user`, `content-manager` | Can manage the catalog                       |
+| `admin`   | `admin`   | `user`, `admin`           | Full access, including user administration   |
+
+> Dev credentials. They exist only in the exported realm; a real deployment
+> provisions users through the IdP and never ships passwords in a repository.
+
+**How a request is authenticated**
+
+1. The SPA (public client, authorization code + PKCE) obtains tokens from
+   Keycloak at `http://localhost:8180/realms/zynema`.
+2. It sends the access token to the gateway as `Authorization: Bearer …`.
+3. The gateway validates the token and enforces route rules.
+4. Each service validates the token again and applies its own rules — a request
+   that bypasses the gateway is not trusted.
+
+**Authorization matrix**
+
+| Endpoint                                                      | Rule                                    |
+| ------------------------------------------------------------- | --------------------------------------- |
+| `GET /api/v1/catalog/**`                                      | anonymous                               |
+| `/api/v1/catalog/admin/**`                                    | role `content-manager` or `admin`       |
+| `/api/v1/auth/public/**`                                      | anonymous                               |
+| `/api/v1/auth/me`                                             | authenticated                           |
+| `/api/v1/users/me`, `/api/v1/users/me/**`                     | authenticated (identity from the token) |
+| `/api/v1/users/**` (id-addressed)                             | role `admin`                            |
+| `/api/v1/web/**` (BFF)                                        | authenticated                           |
+| `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**` | anonymous                               |
+
+Errors use the same `ApiError` envelope as the rest of the API: a missing token
+is `401`, a valid token without the required role is `403`.
+
+### Getting a token for manual testing
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/zynema/protocol/openid-connect/token \
+  -d grant_type=password \
+  -d client_id=zynema-cli -d client_secret=zynema-cli-dev-secret \
+  -d username=demo -d password=demo \
+  -d scope="openid profile email" | jq -r .access_token)
+```
+
 ### Verifying the stack end to end
 
 ```bash
-# Public reads through the gateway (no auth in Phase 2)
+# Public reads through the gateway (anonymous)
 curl "http://localhost:8080/api/v1/catalog/movies?size=3"
 curl "http://localhost:8080/api/v1/catalog/series/arcane"
 curl "http://localhost:8080/api/v1/catalog/series/arcane/seasons/1/episodes"
 curl "http://localhost:8080/api/v1/catalog/search?q=dune"
-curl "http://localhost:8080/api/v1/users/71000000-0000-4000-8000-000000000001"
+
+# Identity-required calls
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/users/me"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/auth/me"
+
+# Role-gated write (needs a manager or admin token)
+curl -X POST -H "Authorization: Bearer $MANAGER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"type":"MOVIE","title":"Example","slug":"example","genreSlugs":["drama"]}' \
+  "http://localhost:8080/api/v1/catalog/admin/contents"
 ```
 
-Expected: 200 with paginated JSON; 404 for an unknown slug; 400 for
-`?size=500`; 503 when a routed service is not running. Each service also
-exposes its own OpenAPI spec at `/v3/api-docs` and Swagger UI at
-`/swagger-ui.html`.
+Expected: 200/201 as appropriate, `401` without a token, `403` with a token
+that lacks the role, `404` for an unknown slug, `400` for `?size=500`, and
+`503` when a routed service is not running. Each service also exposes its own
+OpenAPI spec at `/v3/api-docs` and Swagger UI at `/swagger-ui.html`.
 
 ---
 
@@ -333,7 +392,7 @@ This project is being built in 10 phases. See [`docs/architecture/00-roadmap.md`
 - [x] Phase 0 — Monorepo bootstrap
 - [x] Phase 1 — Eureka, Config Server, API Gateway skeleton
 - [x] Phase 2 — PostgreSQL + Flyway + catalog and user domains
-- [ ] Phase 3 — Auth with Keycloak (OIDC + JWT)
+- [x] Phase 3 — Auth with Keycloak (OIDC + JWT)
 - [ ] Phase 4 — Domain services + Resilience4j + rate limiting
 - [ ] Phase 5 — BFF reactive with WebClient + API composition + CQRS
 - [ ] Phase 6 — Video pipeline (FFmpeg + MinIO + Nginx)

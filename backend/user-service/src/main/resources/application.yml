@@ -24,14 +24,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-  # ── Security (Fase 3) ────────────────────────────────────────────────
-  # JWT resource-server validation against Keycloak is wired in Fase 3
-  # (see ADR-0002). Until then the service boots standalone.
-  # security:
-  #   oauth2:
-  #     resourceserver:
-  #       jwt:
-  #         issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/zynema}
+  # Security settings (issuer, JWKS, audience) are shared by every service
+  # and live in the config repository: see zynema.security.* in
+  # infra/config-repo/application.yml. Authorization rules live in SecurityConfig.
   config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 

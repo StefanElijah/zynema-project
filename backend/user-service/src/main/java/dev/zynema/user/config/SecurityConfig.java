@@ -1,33 +1,37 @@
 package dev.zynema.user.config;
 
+import dev.zynema.common.security.ServletSecuritySupport;
+import dev.zynema.common.security.ZynemaSecurityPaths;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Phase 2 security posture: the user API is open so the read model can be
- * exercised without an identity provider running.
+ * User-service authorization rules.
  *
- * <p><strong>Fase 3 replaces this</strong> with JWT-based rules once Keycloak
- * is wired (ADR-0002): a user may only access their own account, and the
- * token subject maps to {@code users.keycloak_subject}.
+ * <p>Self-service lives under {@code /api/v1/users/me/**}: the caller's
+ * identity comes from the token, never from the URL, so an account cannot even
+ * express a request against another account.
+ *
+ * <p>The id-addressed endpoints stay for back-office use and require the
+ * {@code admin} role. {@code /me} is matched first on purpose — the rules are
+ * evaluated in order and the broader pattern below would otherwise swallow it.
  */
 @Configuration
-@EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain apiSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
-            .formLogin(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+    SecurityFilterChain userSecurityFilterChain(HttpSecurity http, ServletSecuritySupport support) throws Exception {
+        http.authorizeHttpRequests(auth -> auth
+            // Operational endpoints and API docs stay public (see ZynemaSecurityPaths).
+            .requestMatchers(ZynemaSecurityPaths.PUBLIC_OPERATIONS).permitAll()
+            .requestMatchers(ZynemaSecurityPaths.PUBLIC_API_DOCS).permitAll()
+            .requestMatchers("/api/v1/users/me", "/api/v1/users/me/**").authenticated()
+            .requestMatchers("/api/v1/users/**").hasRole("admin")
+            .anyRequest().authenticated());
+
+        support.apply(http);
         return http.build();
     }
 }

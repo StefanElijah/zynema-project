@@ -45,15 +45,31 @@ Status legend: `[x]` done · `[~]` in progress · `[ ]` pending
 - [x] Gateway routes aligned with the versioned public API and verified
       end-to-end against real services, real PostgreSQL and real Redis
 
-## Phase 3 — Auth with Keycloak
+## Phase 3 — Auth with Keycloak ✅
 
-- [ ] Keycloak realm `zynema` exported and versioned
-- [ ] Clients: `zynema-web` (public, PKCE) and `zynema-bff` (confidential)
-- [ ] Roles: `user`, `admin`, `content-manager`
-- [ ] `auth-service` as JWT resource server; resource-server config re-enabled
-      in every service (removed in Phase 2 on purpose, see ADR-0002)
-- [ ] Spring Security at the gateway; frontend PKCE flow
-- [ ] Testcontainers Keycloak tests
+- [x] Realm `zynema` versioned with deterministic user ids, token lifetimes,
+      audience mapper and three clients: `zynema-web` (public, PKCE),
+      `zynema-cli` (dev/test, password grant) and `zynema-bff` (confidential)
+- [x] Roles `user`, `admin`, `content-manager`; seeded users `demo`, `manager`
+      and `admin`
+- [x] Shared security starter in `common` (ADR-0014): JWT decoder,
+      realm-role converter, JSON 401/403, secure-by-default chains
+- [x] Split-horizon issuer + audience validation (ADR-0015); Keycloak moved to
+      host port 8180 to free 8081 for user-service
+- [x] Every service is a resource server; per-service authorization matrices
+      (`catalog` public reads + role-gated admin, `user` self-service + admin,
+      `auth` public config, gateway route rules)
+- [x] `user-service`: self-service under `/api/v1/users/me/**` with JIT
+      provisioning linked by Keycloak subject or verified email
+- [x] Frontend: `oidc-client-ts` + `react-oidc-context`, PKCE, silent renew,
+      session storage (ADR-0016), protected `/account` route, token-aware client
+- [x] Tests: authorization matrices, a real-Keycloak integration test
+      (issuer, audience, JWKS, role mapping) and the shared-starter tests
+
+**Deferred on purpose:** self-service registration via the Keycloak Admin API.
+It needs a service account with `manage-users`, a password policy and email
+verification, which only make sense once notification-service and the
+subscription flow exist (Phase 4/7).
 
 ## Phase 4 — Domain services and resilience
 

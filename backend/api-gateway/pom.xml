@@ -15,6 +15,11 @@
     <description>Reactive API gateway (Spring Cloud Gateway, WebFlux)</description>
 
     <dependencies>
+        <!-- Shared security infrastructure (JWT decoder, realm roles, JSON 401/403) -->
+        <dependency>
+            <groupId>dev.zynema</groupId>
+            <artifactId>zynema-common</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway-server-webflux</artifactId>
@@ -47,6 +52,13 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
             <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- Mock JWTs for the route-authorization tests -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
