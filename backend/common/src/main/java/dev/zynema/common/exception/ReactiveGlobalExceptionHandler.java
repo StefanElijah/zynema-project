@@ -1,6 +1,7 @@
 package dev.zynema.common.exception;
 
 import dev.zynema.common.dto.ApiError;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -36,6 +37,20 @@ public class ReactiveGlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiError> handleConflict(ConflictException ex, ServerWebExchange exchange) {
         return build(HttpStatus.CONFLICT, ex.getMessage(), exchange, null, null);
+    }
+
+    @ExceptionHandler(SubscriptionRequiredException.class)
+    public ResponseEntity<ApiError> handleSubscriptionRequired(SubscriptionRequiredException ex, ServerWebExchange exchange) {
+        return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), exchange, null,
+            java.util.Map.of("code", "SUBSCRIPTION_REQUIRED"));
+    }
+
+    @ExceptionHandler(CallNotPermittedException.class)
+    public ResponseEntity<ApiError> handleCircuitOpen(CallNotPermittedException ex, ServerWebExchange exchange) {
+        log.warn("Circuit breaker '{}' is open, rejecting the request", ex.getCausingCircuitBreakerName());
+        return build(HttpStatus.SERVICE_UNAVAILABLE,
+            "A dependency is temporarily unavailable (%s)".formatted(ex.getCausingCircuitBreakerName()),
+            exchange, null, java.util.Map.of("dependency", ex.getCausingCircuitBreakerName()));
     }
 
     @ExceptionHandler(DownstreamServiceException.class)

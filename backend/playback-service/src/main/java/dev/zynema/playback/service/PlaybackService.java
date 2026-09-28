@@ -1,7 +1,9 @@
 package dev.zynema.playback.service;
 
 import dev.zynema.common.exception.BusinessRuleException;
+import dev.zynema.common.exception.DownstreamServiceException;
 import dev.zynema.common.exception.ResourceNotFoundException;
+import dev.zynema.common.exception.SubscriptionRequiredException;
 import dev.zynema.playback.client.CatalogServiceClient;
 import dev.zynema.playback.client.PaymentServiceClient;
 import dev.zynema.playback.domain.PlaybackSession;
@@ -46,7 +48,7 @@ public class PlaybackService {
     public SessionDto start(StartSessionRequest request, Jwt jwt) {
         UUID userId = dependencies.resolveUserId(jwt);
         CatalogServiceClient.ContentSummary content = dependencies.requireContent(request.contentId());
-        PaymentServiceClient.Entitlements entitlements = dependencies.entitlements();
+        PaymentServiceClient.Entitlements entitlements = requireActivePlan(dependencies.entitlements());
 
         Optional<PlaybackSession> existing = findOpenSession(request);
         if (existing.isPresent()) {
@@ -102,6 +104,28 @@ public class PlaybackService {
     }
 
     // ───────────────────────────── helpers ────────────────────────────
+
+    /**
+     * Watching is a paid feature: browsing the catalogue is public, starting a
+     * session is not.
+     *
+     * <p>The two refusals are deliberately different. A plan that does not
+     * exist is a paywall ({@code 402 SUBSCRIPTION_REQUIRED}); a plan that
+     * cannot be checked is an outage ({@code 503}), because guessing "free"
+     * would let a lapsed account watch and guessing "no" would lock out a
+     * paying one.
+     */
+    private PaymentServiceClient.Entitlements requireActivePlan(PlaybackDependencies.EntitlementsResult result) {
+        if (result.degraded()) {
+            throw new DownstreamServiceException("payment-service",
+                "Could not verify the account's plan");
+        }
+        if (!result.entitlements().active()) {
+            throw new SubscriptionRequiredException(
+                "An active subscription is required to start playback");
+        }
+        return result.entitlements();
+    }
 
     private void enforceConcurrencyLimit(UUID userId, int maxStreams) {
         long open = sessionRepository.countByUserIdAndStatusNot(userId, SessionStatus.ENDED);

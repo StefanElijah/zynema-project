@@ -105,11 +105,22 @@ runbook.
 
 ## Phase 5 — BFF (reactive) and CQRS
 
-- [ ] `bff-service` with WebClient: API composition for the frontend
-- [ ] Aggregated response cache in Redis
-- [ ] Timeouts, fallbacks and per-dependency circuit breakers
+- [x] `bff-service` with WebClient: one endpoint per screen under
+      `/api/v1/web/**` (home, content detail, account, profile rails), with the
+      view model owned by the BFF and the public/personal split at the edge and
+      in the service (ADR-0021)
+- [x] Aggregated response cache in Redis: whole screens with per-cache TTLs
+      (home 5 min, detail 2 min, personal 60 s), cache aspect outside the
+      resilience aspects so a cached screen survives an open circuit
+- [x] Timeouts, fallbacks and per-dependency circuit breakers: token relay,
+      correlation propagation, 4xx is not a failure, optional sections degrade
+      with a `degraded` marker instead of lying (ADR-0021)
+- [x] Watching requires an account and an active plan: playback answers
+      `402 SUBSCRIPTION_REQUIRED` without one and `503` when the plan cannot be
+      verified; the BFF only reports it
 - [ ] CQRS read model in `catalog-service` (projection + materialised view)
-- [ ] WireMock-based tests
+- [x] WireMock-based tests for the BFF (composition, degradation, cache, token
+      relay) plus the resilience classification unit tests
 
 ## Phase 6 — Video pipeline
 

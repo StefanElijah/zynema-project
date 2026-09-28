@@ -41,6 +41,13 @@ public class SecurityConfig {
             // Browsing the catalogue is anonymous.
             .pathMatchers(HttpMethod.GET, "/api/v1/catalog/**").permitAll()
 
+            // The BFF's shop window: the landing page and content metadata are
+            // public, so a visitor sees what the platform has. Everything
+            // personalized (account, profile rails) and everything that plays
+            // content still needs a token — and, for playback, a plan.
+            .pathMatchers(HttpMethod.GET, "/api/v1/web/home").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/v1/web/catalog/**").permitAll()
+
             // The pricing page must work before signing up. Conservative on
             // purpose: only GET on the plans collection, nothing else under
             // /payments is public.
@@ -49,7 +56,8 @@ public class SecurityConfig {
             // Login-related endpoints must be reachable before a token exists.
             .pathMatchers("/api/v1/auth/public/**").permitAll()
 
-            // Everything else (user self-service, BFF, payments, playback, ...) needs a token.
+            // Everything else (user self-service, the BFF's personal views,
+            // payments, playback, ...) needs a token.
             .anyExchange().authenticated());
 
         support.apply(http);

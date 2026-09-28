@@ -77,9 +77,14 @@ zynema:
         # Anonymous traffic keyed by client address: protects the public reads.
         replenish-rate: 20
         burst-capacity: 40
-      catalog-admin:
-        replenish-rate: 5
-        burst-capacity: 10
+      bff-web:
+        # The aggregation endpoint fans out to several services per request, so
+        # one screen costs more than one domain call. Keyed by route id: this is
+        # the id the BFF route declares (an entry for a route that does not
+        # exist — "catalog-admin" — was removed in Fase 5; admin traffic already
+        # falls under "catalog" and is keyed by the authenticated subject).
+        replenish-rate: 30
+        burst-capacity: 60
       user:
         replenish-rate: 30
         burst-capacity: 60

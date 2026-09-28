@@ -8,8 +8,9 @@ import java.time.Instant;
  * number of concurrent playback sessions.
  *
  * <p>The free tier is the absence of a subscription: {@code active = false}
- * with the most restrictive limits. A degraded dependency therefore falls back
- * to <em>fewer</em> rights, never to more.
+ * with the most restrictive limits. It is an <em>answer</em>, not a fallback:
+ * a caller that cannot reach payment-service must not assume entitlements at
+ * all (playback answers 503 instead of granting the free tier by accident).
  */
 public record EntitlementsDto(
     boolean active,

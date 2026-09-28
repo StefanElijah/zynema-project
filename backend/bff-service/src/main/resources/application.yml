@@ -5,16 +5,69 @@
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-  # NOTE: OAuth2 client registration against Keycloak is added in Fase 3.
-  # Declaring an issuer-uri here triggers OIDC discovery at startup, which
-  # would make the BFF un-bootable in the `core` profile (Keycloak lives in
-  # the `auth` profile). Kept out until Fase 3 wires the token relay.
+  # The BFF does not register an OAuth2 client: for user-initiated calls it
+  # relays the caller's token (see WebClientConfig) and the shared JWT decoder
+  # validates it on the way in. Declaring an issuer-uri here would trigger OIDC
+  # discovery at startup and make the BFF un-bootable without Keycloak.
   config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 
 server:
   port: 8086
   shutdown: graceful
+
+zynema:
+  bff:
+    clients:
+      # lb:// resolves through Eureka; tests replace these with fixed URLs so
+      # WireMock can stand in for the dependency.
+      catalog: ${BFF_CATALOG_URL:lb://catalog-service}
+      user: ${BFF_USER_URL:lb://user-service}
+      payment: ${BFF_PAYMENT_URL:lb://payment-service}
+    http:
+      # One slow dependency must not hold the screen: the BFF composes several
+      # calls per request, and the client is the only place with a hard bound.
+      connect-timeout: 1s
+      response-timeout: 3s
+    cache:
+      key-prefix: 'zynema:bff:'
+      # TTLs instead of eviction: writes happen in the domain services, which
+      # do not know who caches their data. Anonymous pages can be staler than
+      # personalized ones.
+      home-ttl: 5m
+      content-ttl: 2m
+      account-ttl: 60s
+      profile-home-ttl: 60s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      catalog-service: &downstream-circuit-breaker
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 15s
+        permittedNumberOfCallsInHalfOpenState: 3
+      user-service: *downstream-circuit-breaker
+      payment-service: *downstream-circuit-breaker
+  retry:
+    # What is worth retrying (transport errors, 5xx) and what is not (4xx) is
+    # decided in ResilienceConfig: class lists in YAML cannot express
+    # "any 4xx" over WebClientResponseException.
+    instances:
+      catalog-service: &downstream-retry
+        maxAttempts: 3
+        waitDuration: 200ms
+      user-service: *downstream-retry
+      payment-service: *downstream-retry
+  bulkhead:
+    instances:
+      catalog-service: &downstream-bulkhead
+        # Per dependency: twelve parallel card lookups from one screen must
+        # not starve the rest of the traffic.
+        maxConcurrentCalls: 20
+      user-service: *downstream-bulkhead
+      payment-service: *downstream-bulkhead
 
 eureka:
   client:
@@ -43,4 +96,4 @@ springdoc:
 info:
   app:
     name: bff-service
-    description: "Backend-for-Frontend: WebClient aggregator for the frontend"
+    description: 'Backend-for-Frontend: WebClient aggregator for the frontend'

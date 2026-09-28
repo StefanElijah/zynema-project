@@ -36,3 +36,4 @@ the choice made, and its consequences.
 | 0018 | [Rate limiting at the edge with a Redis token bucket](0018-rate-limiting.md)            | Accepted |
 | 0019 | [Identity propagation between services](0019-identity-propagation.md)                   | Accepted |
 | 0020 | [Version hygiene — let the BOM decide](0020-version-hygiene.md)                         | Accepted |
+| 0021 | [The BFF composes screens, it does not enforce business rules](0021-bff-composition.md) | Accepted |

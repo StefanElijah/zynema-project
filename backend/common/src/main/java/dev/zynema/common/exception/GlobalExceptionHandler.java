@@ -47,6 +47,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Authenticated, but the account has no active plan. The code in the
+     * details lets the frontend branch to the paywall without parsing prose.
+     */
+    @ExceptionHandler(SubscriptionRequiredException.class)
+    public ResponseEntity<ApiError> handleSubscriptionRequired(SubscriptionRequiredException ex, WebRequest request) {
+        return build(HttpStatus.PAYMENT_REQUIRED, ex.getMessage(), request, null,
+            Map.of("code", "SUBSCRIPTION_REQUIRED"));
+    }
+
+    /**
      * The circuit breaker for a dependency is open: the call was never made.
      * It is a 503 because the service is fine and the dependency is not.
      */

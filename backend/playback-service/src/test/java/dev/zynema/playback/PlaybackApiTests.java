@@ -115,8 +115,8 @@ class PlaybackApiTests extends AbstractPlaybackIntegrationTest {
     // ───────────────────────── concurrency limit ───────────────────────
 
     @Test
-    @DisplayName("the free tier allows a single concurrent stream")
-    void freeTierAllowsOneStream() throws Exception {
+    @DisplayName("a plan that allows a single stream refuses the second one")
+    void basicPlanAllowsOneStream() throws Exception {
         stubEntitlements(1);
         start(ARCADE_CONTENT, null, 1);
 
@@ -135,6 +135,23 @@ class PlaybackApiTests extends AbstractPlaybackIntegrationTest {
         start(DUNE_CONTENT, null, 4);
 
         assertThat(sessionRepository.count()).isEqualTo(2);
+    }
+
+    // ──────────────────────────── paywall ──────────────────────────────
+
+    @Test
+    @DisplayName("watching without an active plan is a paywall, not a session")
+    void withoutActivePlanIsPaymentRequired() throws Exception {
+        stubEntitlements(false, 1);
+
+        mockMvc.perform(post("/api/v1/playback/sessions").with(asDemo())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(startBody(DEMO_PROFILE, ARCADE_CONTENT, null)))
+            .andExpect(status().isPaymentRequired())
+            .andExpect(jsonPath("$.details.code", is("SUBSCRIPTION_REQUIRED")))
+            .andExpect(jsonPath("$.message", is("An active subscription is required to start playback")));
+
+        assertThat(sessionRepository.count()).isZero();
     }
 
     // ─────────────────────────── heartbeat/end ─────────────────────────
@@ -211,20 +228,21 @@ class PlaybackApiTests extends AbstractPlaybackIntegrationTest {
     // ─────────────────────────── resilience ───────────────────────────
 
     @Test
-    @DisplayName("when payment is down playback degrades to the free tier, never above it")
-    void paymentDownDegradesToFreeTier() throws Exception {
+    @DisplayName("when payment is down playback refuses to guess the plan: 503, no session")
+    void paymentDownRefusesToGuess() throws Exception {
         DEPENDENCIES.resetAll();
         stubUserService();
         stubCatalog();
         DEPENDENCIES.stubFor(WireMock.get(WireMock.urlEqualTo("/api/v1/payments/subscriptions/me/entitlements"))
             .willReturn(WireMock.aResponse().withStatus(503)));
 
-        start(ARCADE_CONTENT, null, 1);
-
         mockMvc.perform(post("/api/v1/playback/sessions").with(asDemo())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(startBody(DEMO_PROFILE, DUNE_CONTENT, null)))
-            .andExpect(status().isUnprocessableEntity());
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.details.service", is("payment-service")));
+
+        assertThat(sessionRepository.count()).isZero();
     }
 
     @Test
@@ -296,11 +314,15 @@ class PlaybackApiTests extends AbstractPlaybackIntegrationTest {
     }
 
     private void stubEntitlements(int maxStreams) {
+        stubEntitlements(true, maxStreams);
+    }
+
+    private void stubEntitlements(boolean active, int maxStreams) {
         DEPENDENCIES.stubFor(WireMock.get(WireMock.urlEqualTo("/api/v1/payments/subscriptions/me/entitlements"))
             .willReturn(WireMock.aResponse().withStatus(200)
                 .withHeader("Content-Type", "application/json")
                 .withBody("""
                     {"active": %s, "maxStreams": %d, "maxQuality": "FHD", "planCode": "standard", "validUntil": null}
-                    """.formatted(maxStreams > 1, maxStreams))));
+                    """.formatted(active, maxStreams))));
     }
 }

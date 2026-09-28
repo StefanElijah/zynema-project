@@ -109,11 +109,32 @@ class GatewaySecurityTests {
     }
 
     @Test
-    @DisplayName("the BFF is not reachable anonymously")
-    void bffRequiresAuthentication() {
+    @DisplayName("the BFF landing page and content metadata are reachable anonymously")
+    void bffReadsArePublic() {
         client.get().uri("/api/v1/web/home")
             .exchange()
+            .expectStatus().is5xxServerError();
+
+        client.get().uri("/api/v1/web/catalog/arcane")
+            .exchange()
+            .expectStatus().is5xxServerError();
+    }
+
+    @Test
+    @DisplayName("the account view and the profile rails are not reachable anonymously")
+    void bffPersonalViewsRequireAuthentication() {
+        client.get().uri("/api/v1/web/account")
+            .exchange()
             .expectStatus().isUnauthorized();
+
+        client.get().uri("/api/v1/web/profiles/72000000-0000-4000-8000-000000000001/home")
+            .exchange()
+            .expectStatus().isUnauthorized();
+
+        client.mutateWith(jwtWithRole("user"))
+            .get().uri("/api/v1/web/account")
+            .exchange()
+            .expectStatus().is5xxServerError();
     }
 
     @Test

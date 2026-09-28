@@ -31,9 +31,11 @@ import java.util.UUID;
  *   <li><b>Identity</b> and <b>content validation</b> have no safe default — the
  *       call fails with 503 rather than inventing an account or playing
  *       something that may not exist.</li>
- *   <li><b>Entitlements</b> fall back to the free tier: fewer rights, never
- *       more. A premium viewer sees a reduced limit while payment is down
- *       instead of the platform letting everyone in.</li>
+ *   <li><b>Entitlements</b> cannot be guessed. Watching requires an active
+ *       plan, so an unavailable payment-service answers 503 ("cannot verify
+ *       the plan right now") instead of inventing either a free tier (which
+ *       would let a lapsed account watch) or a denial (which would lock out a
+ *       paying one).</li>
  *   <li><b>Progress</b> is best effort: losing one heartbeat is acceptable, the
  *       session keeps running and the next heartbeat catches up.</li>
  * </ul>
@@ -85,17 +87,29 @@ public class PlaybackDependencies {
     @Retry(name = "payment-service")
     @CircuitBreaker(name = "payment-service")
     @Bulkhead(name = "payment-service")
-    public PaymentServiceClient.Entitlements entitlements() {
+    public EntitlementsResult entitlements() {
         try {
-            return paymentServiceClient.currentEntitlements();
+            return EntitlementsResult.available(paymentServiceClient.currentEntitlements());
         } catch (RuntimeException ex) {
-            log.warn("Entitlements unavailable, falling back to the free tier: {}", ex.getMessage());
-            return FREE_TIER;
+            log.warn("Entitlements unavailable: {}", ex.getMessage());
+            return EntitlementsResult.unavailable();
         }
     }
 
-    private static final PaymentServiceClient.Entitlements FREE_TIER =
-        new PaymentServiceClient.Entitlements(false, 1, "SD", "free", null);
+    /**
+     * "No plan" and "cannot check the plan" are different answers and the
+     * caller must not confuse them: one is a paywall, the other is a retry.
+     */
+    public record EntitlementsResult(PaymentServiceClient.Entitlements entitlements, boolean degraded) {
+
+        static EntitlementsResult available(PaymentServiceClient.Entitlements entitlements) {
+            return new EntitlementsResult(entitlements, false);
+        }
+
+        static EntitlementsResult unavailable() {
+            return new EntitlementsResult(null, true);
+        }
+    }
 
     // ──────────────────────────── progress ────────────────────────────
 

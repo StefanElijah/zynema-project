@@ -299,8 +299,9 @@ services:
     container_name: zynema-bff
     environment:
       <<: *rest-java-env
-      # Token validation is wired by the shared anchor; the OAuth2 client
-      # registration for downstream calls lands in Fase 5.
+      # Token validation is wired by the shared anchor. For downstream calls the
+      # BFF relays the caller's own token instead of minting a service one, so
+      # no OAuth2 client registration is needed here.
 
   notification-service:
     <<: *rest-java
