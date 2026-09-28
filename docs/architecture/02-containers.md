@@ -44,11 +44,11 @@ C4Container
     Rel(endUser, spa, "Uses", "HTTPS")
     Rel(operator, spa, "Uses", "HTTPS")
     Rel(spa, gateway, "All API calls", "HTTPS")
-    Rel(gateway, bff, "/api/web/**", "WebFlux")
+    Rel(gateway, bff, "/api/v1/web/**", "WebFlux")
     Rel(gateway, auth, "JWT validation", "HTTPS")
-    Rel(bff, user, "Aggregates", "OpenFeign")
-    Rel(bff, catalog, "Aggregates", "OpenFeign")
-    Rel(bff, playback, "Aggregates", "OpenFeign")
+    Rel(bff, user, "Aggregates", "WebClient")
+    Rel(bff, catalog, "Aggregates", "WebClient")
+    Rel(bff, playback, "Aggregates", "WebClient")
     Rel(auth, keycloak, "Validates JWT", "OIDC")
 
     Rel(catalog, catalogDb, "Reads/writes", "JDBC")
@@ -62,7 +62,7 @@ C4Container
     Rel(notif, kafka, "Consumes events", "Kafka")
 
     Rel(catalog, redis, "Cache", "Redis")
-    Rel(bff, redis, "Aggregate cache", "Redis Reactive")
+    Rel(bff, redis, "Aggregate cache", "Redis (cache)")
 
     Rel(playback, minio, "Reads HLS", "S3 API")
     Rel(playback, nginx, "Signed URLs", "HTTPS")

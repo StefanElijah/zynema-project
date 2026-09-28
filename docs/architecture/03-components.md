@@ -35,22 +35,22 @@ C4Component
 
 ## Patterns used across services
 
-| Concern | Where it lives |
-|---|---|
-| HTTP entry point | `api` package |
-| Use cases | `service` or `application` package |
-| Domain rules | `domain` package (entities + value objects) |
-| Persistence | `repository` package (Spring Data) |
-| Outbound HTTP | `client` package (OpenFeign interfaces) |
-| Outbound events | `events` package (Stream producers) |
-| Cross-cutting config | `config` package |
+| Concern              | Where it lives                              |
+| -------------------- | ------------------------------------------- |
+| HTTP entry point     | `api` package                               |
+| Use cases            | `service` or `application` package          |
+| Domain rules         | `domain` package (entities + value objects) |
+| Persistence          | `repository` package (Spring Data)          |
+| Outbound HTTP        | `client` package (OpenFeign interfaces)     |
+| Outbound events      | `events` package (Stream producers)         |
+| Cross-cutting config | `config` package                            |
 
 ## Service-specific component diagrams (TODO)
 
 - [ ] catalog-service
 - [ ] payment-service
 - [ ] playback-service
-- [ ] bff-service
+- [x] bff-service
 - [ ] user-service
 - [ ] auth-service
 - [ ] notification-service

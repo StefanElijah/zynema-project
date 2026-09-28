@@ -37,3 +37,4 @@ the choice made, and its consequences.
 | 0019 | [Identity propagation between services](0019-identity-propagation.md)                   | Accepted |
 | 0020 | [Version hygiene — let the BOM decide](0020-version-hygiene.md)                         | Accepted |
 | 0021 | [The BFF composes screens, it does not enforce business rules](0021-bff-composition.md) | Accepted |
+| 0022 | [A projected read model for the catalogue](0022-catalog-read-model.md)                  | Accepted |

@@ -257,7 +257,8 @@ you a working IdP plus three users.
 | `/api/v1/auth/me`                                             | authenticated                           |
 | `/api/v1/users/me`, `/api/v1/users/me/**`                     | authenticated (identity from the token) |
 | `/api/v1/users/**` (id-addressed)                             | role `admin`                            |
-| `/api/v1/web/**` (BFF)                                        | authenticated                           |
+| `/api/v1/web/home`, `/api/v1/web/catalog/**` (BFF reads)      | public                                  |
+| `/api/v1/web/account`, `/api/v1/web/profiles/**` (BFF)        | authenticated                           |
 | `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**` | anonymous                               |
 
 Errors use the same `ApiError` envelope as the rest of the API: a missing token

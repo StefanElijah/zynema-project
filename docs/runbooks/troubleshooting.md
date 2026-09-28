@@ -316,6 +316,81 @@ The `api-gateway` and `bff-service` simply do not add the `db` file. Remember a
 local `application.yml` cannot override the shared value: config-server
 properties win, which is exactly why the exception lives in the repository.
 
+## **[F5] Tempo answers with an empty trace list right after generating traffic**
+
+Symptom: the services log normal activity, a request traces through the gateway,
+and `GET /api/search` still returns `{"traces":[]}` — including for traces you
+can see were created minutes ago.
+
+Cause: Tempo's search API only serves **completed blocks**. The local config
+(`infra/observability/tempo-config.yaml`) flushes every `max_block_duration: 5m`,
+and until that flush the spans live in the ingester's WAL, unsearchable. An
+empty result therefore says nothing about your services.
+
+How to tell the two apart:
+
+1. Wait for the next block (up to ~5 minutes) and query again; and/or
+2. Prove the exporter is running independently of Tempo: restart the service
+   with the endpoint pointed at a dead port and generate traffic:
+   ```bash
+   MANAGEMENT_OTLP_TRACING_ENDPOINT=http://localhost:9/v1/traces java -jar app.jar
+   ```
+   A working exporter logs `Failed to export spans ... Connection refused` within
+   seconds. No log line means the spans are not being created at all — then look
+   at the tracing dependencies and the sampled probability.
+
+Do not chase "missing traces" in the application before ruling out the flush
+window; it looks exactly like a broken exporter.
+
+## **[F5] A BFF endpoint returns 503 "LoadBalancer does not contain an instance for the service localhost"**
+
+Symptom: the BFF answers 503 blaming the load balancer for a service called
+`localhost`.
+
+Cause: a `@LoadBalanced WebClient.Builder` resolves **any** host as a service
+id — including an absolute `http://host:port` URL, which it then looks up in
+Eureka. The BFF builds its clients from a plain builder and attaches
+`ReactorLoadBalancerExchangeFilterFunction` only when the configured base URL
+starts with `lb://`, so production still resolves through Eureka while tests
+point at a fixed WireMock URL.
+
+## **[F5] `@CircuitBreaker`/`@Retry` do not seem to apply at all**
+
+Symptom: a downstream 503 reaches the client raw instead of degrading or
+opening the breaker; nothing appears in `/actuator/circuitbreakers`.
+
+Cause: the Resilience4j annotations are implemented as aspects. Without
+`spring-boot-starter-aop` (plus `resilience4j-reactor` for reactive return
+types) they are **silently ignored** — the pom looks configured, the code
+compiles, and no behaviour changes.
+
+Fix: declare both dependencies. Then check the instance exists:
+`curl localhost:8086/actuator/circuitbreakers`.
+
+## **[F5] Catalogue writes are projected with the previous values**
+
+Symptom: right after an admin `POST`/`PUT`, the read model (and therefore the
+API) still shows the old title or genres.
+
+Cause: the projector reads the write tables through JDBC, which does not see
+un-flushed JPA state. `contentRepository.save(...)` may keep the change in the
+persistence context.
+
+Fix: `saveAndFlush(...)` before projecting (the command service does). The same
+applies to any future writer: flush first, then project.
+
+## **[F5] The read model is empty after migrating**
+
+Symptom: every catalogue list is empty right after applying
+`V4__catalog_read_model.sql`, even though the write tables have rows.
+
+Cause: the migration creates the projection empty by design.
+
+Fix: restart catalog-service. `CatalogReadModelBackfill` detects an empty
+projection at startup and rebuilds it from the write tables (one log line:
+"Read model was empty: projected N catalogue titles"). A full rebuild can also
+be triggered by truncating `content_read_model` and restarting.
+
 ## **[F4] Tempo answers 404 on the OTLP endpoint**
 
 Symptom: spans never arrive and the exporter logs `404 Not Found`.
@@ -378,18 +453,22 @@ migration edit is not picked up by an incremental build — recompile with
 
 ## "Frontend shows 'Network Error' on /api calls"
 
-1. The Vite dev server proxies `/api` to `http://localhost:8086` (the
-   BFF). Make sure the BFF is running:
+1. The Vite dev server proxies `/api` to `http://localhost:8080` (the
+   gateway), which forwards `/api/v1/**` to the services and
+   `/api/v1/web/**` to the BFF. Make sure both are running:
    ```bash
-   docker compose ps bff-service
+   docker compose ps api-gateway bff-service
    ```
 2. Check the gateway is forwarding correctly:
    ```bash
    curl http://localhost:8080/actuator/health
-   curl http://localhost:8080/api/web/catalog  # should 200 or 401
+   curl http://localhost:8080/api/v1/catalog/movies        # public read
+   curl http://localhost:8080/api/v1/web/home             # public BFF screen
+   curl http://localhost:8080/api/v1/web/account          # 401 without a token
    ```
-3. If you get a 401, you need to be logged in (Keycloak). The BFF
-   expects a Bearer token.
+3. A 401 on `/api/v1/web/account` or `/api/v1/web/profiles/**` is expected
+   anonymously: those are personal views and need a Bearer token. The landing
+   page and content metadata are public on purpose.
 
 ## "Keycloak says 'Invalid username or password'"
 

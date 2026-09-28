@@ -103,7 +103,7 @@ phases — `spring.config.import: optional:configserver:` is silently ignored wh
 missing dependencies; the fix and the runtime verification are recorded in the
 runbook.
 
-## Phase 5 — BFF (reactive) and CQRS
+## Phase 5 — BFF (reactive) and CQRS ✅
 
 - [x] `bff-service` with WebClient: one endpoint per screen under
       `/api/v1/web/**` (home, content detail, account, profile rails), with the
@@ -118,9 +118,20 @@ runbook.
 - [x] Watching requires an account and an active plan: playback answers
       `402 SUBSCRIPTION_REQUIRED` without one and `503` when the plan cannot be
       verified; the BFF only reports it
-- [ ] CQRS read model in `catalog-service` (projection + materialised view)
+- [x] CQRS read model in `catalog-service`: `content_read_model` with columns
+      for filter/sort/search and JSONB payloads, projected inside the write
+      transaction, backfilled on first boot and rebuildable on demand
+      (ADR-0022); reads never touch the write tables, genres excepted
 - [x] WireMock-based tests for the BFF (composition, degradation, cache, token
-      relay) plus the resilience classification unit tests
+      relay), resilience classification unit tests, and read-model tests proving
+      that reads come from the projection and writes project atomically
+
+**Lesson worth keeping:** annotations that live in aspects fail silently when
+the aspect is missing. The BFF's `@CircuitBreaker` configuration looked correct
+and did nothing until `spring-boot-starter-aop` was on the classpath — the same
+family of bug as the missing Config client in Fase 4. When a cross-cutting
+feature "does not seem to apply", check that its infrastructure is present
+before debugging the configuration.
 
 ## Phase 6 — Video pipeline
 

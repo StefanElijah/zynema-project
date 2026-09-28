@@ -25,9 +25,14 @@ import java.util.stream.Collectors;
 /**
  * Write side of the catalog (admin API).
  *
- * <p>Every mutation evicts the whole catalog cache region: catalog writes are
- * rare compared to reads, and a coarse eviction is far easier to reason about
- * than per-key invalidation across list/detail/search caches.
+ * <p>Every mutation projects the affected title into the read model in the same
+ * transaction (ADR-0006, ADR-0022) and evicts the whole catalog cache region:
+ * catalog writes are rare compared to reads, and a coarse eviction is far
+ * easier to reason about than per-key invalidation across list/detail/search
+ * caches.
+ *
+ * <p>The projector reads through JDBC, so entities are flushed before it runs;
+ * an un-flushed <code>save()</code> would project the previous version.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,7 +41,7 @@ public class CatalogCommandService {
 
     private final ContentRepository contentRepository;
     private final GenreRepository genreRepository;
-    private final CatalogQueryService queryService;
+    private final CatalogProjector projector;
 
     @CacheEvict(cacheNames = {
         CacheConfig.CONTENT_LIST, CacheConfig.CONTENT_DETAIL,
@@ -53,8 +58,8 @@ public class CatalogCommandService {
         content.setGenres(resolveGenres(request.genreSlugs()));
         applyCreateFields(content, request);
 
-        Content saved = contentRepository.save(content);
-        return queryService.buildDetail(saved.getSlug());
+        Content saved = contentRepository.saveAndFlush(content);
+        return projector.project(saved);
     }
 
     @CacheEvict(cacheNames = {
@@ -68,8 +73,8 @@ public class CatalogCommandService {
         content.setGenres(resolveGenres(request.genreSlugs()));
         applyUpdateFields(content, request);
 
-        Content saved = contentRepository.save(content);
-        return queryService.buildDetail(saved.getSlug());
+        Content saved = contentRepository.saveAndFlush(content);
+        return projector.project(saved);
     }
 
     @CacheEvict(cacheNames = {
@@ -81,6 +86,7 @@ public class CatalogCommandService {
             throw new ResourceNotFoundException("Content", id);
         }
         contentRepository.deleteById(id);
+        projector.remove(id);
     }
 
     // ───────────────────────────── helpers ────────────────────────────
