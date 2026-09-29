@@ -86,6 +86,21 @@ eventId, occurredAt, payload)` records the log entry's identity, so the row
   (`device`, `contentTitle`). The alternative — a private event dialect — was
   rejected because "the outbox is the same rows" would stop being true.
 
+### Deliberately not backfilled
+
+There is no migration that writes a stream for the `playback_sessions` rows
+that existed before V2, and that is a decision, not an omission. A projection
+cannot supply history: heartbeats overwrote each other, the seeks and pauses
+are gone, and `watchedSeconds` was never stored — any log built from a row
+would be **invented**, and an append-only log that contains invented facts is
+worse than a log with a visible gap. The affected rows are development data:
+the write side treats a session without a stream as a 404 and the player opens
+a new session. If this ever mattered (a production cut-over), the procedure
+would be a reconciliation job that appends one `SessionStarted` per orphan row
+carrying the observed state, marks it as reconstructed, and runs with the
+outbox disabled so the synthetic past is not published as new facts; nothing
+of that is implemented today.
+
 ## Notes
 
 - Snapshots are stored as text, not `jsonb`: they are written and read by the

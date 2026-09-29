@@ -6,10 +6,12 @@ import dev.zynema.common.messaging.EventEnvelopes;
 import dev.zynema.common.messaging.OutboxRelay;
 import dev.zynema.events.KafkaTopics;
 import dev.zynema.events.PlaybackEvent;
+import dev.zynema.playback.dto.StartSessionRequest;
 import dev.zynema.playback.events.SessionEventStore;
 import dev.zynema.playback.events.SessionEventStore.SessionStream;
 import dev.zynema.playback.events.SessionState;
 import dev.zynema.playback.repository.PlaybackSessionRepository;
+import dev.zynema.playback.service.PlaybackService;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -23,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -34,6 +37,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -58,11 +67,18 @@ class EventSourcingTests extends AbstractPlaybackIntegrationTest {
     private static final String DEMO_PROFILE = "72000000-0000-4000-8000-000000000001";
     private static final UUID ARCADE_CONTENT = UUID.fromString("a2000000-0000-4000-8000-000000000002");
 
+    /** The service called from worker threads: no MVC, the transaction is the thing under test. */
+    private static final Jwt DEMO_JWT = Jwt.withTokenValue("event-sourcing-test")
+        .header("alg", "none").subject(DEMO_SUBJECT).claim("email", "demo@zynema.dev").build();
+
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private PlaybackSessionRepository sessionRepository;
+
+    @Autowired
+    private PlaybackService playbackService;
 
     @Autowired
     private SessionEventStore eventStore;
@@ -195,6 +211,46 @@ class EventSourcingTests extends AbstractPlaybackIntegrationTest {
             .isInstanceOf(ConflictException.class);
 
         assertThat(eventStore.load(sessionId).state().positionSeconds()).isEqualTo(100);
+    }
+
+    @Test
+    @DisplayName("concurrent starts of the same title leave one session, one stream and one event")
+    void concurrentStartsKeepASingleSession() throws Exception {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            sessionRepository.deleteAll();
+            resetEventStore();
+
+            CountDownLatch ready = new CountDownLatch(2);
+            CountDownLatch go = new CountDownLatch(1);
+            ExecutorService pool = Executors.newFixedThreadPool(2);
+            try {
+                Callable<UUID> starter = () -> {
+                    ready.countDown();
+                    go.await(10, TimeUnit.SECONDS);
+                    return playbackService.start(new StartSessionRequest(UUID.fromString(DEMO_PROFILE),
+                        ARCADE_CONTENT, null, "race"), DEMO_JWT).id();
+                };
+                Future<UUID> first = pool.submit(starter);
+                Future<UUID> second = pool.submit(starter);
+                assertThat(ready.await(10, TimeUnit.SECONDS)).as("both callers arrived").isTrue();
+                go.countDown();
+
+                UUID firstId = first.get(30, TimeUnit.SECONDS);
+                UUID secondId = second.get(30, TimeUnit.SECONDS);
+
+                assertThat(secondId).as("both callers see the same session (#%d)", attempt)
+                    .isEqualTo(firstId);
+                assertThat(sessionRepository.count()).as("projected sessions").isEqualTo(1);
+                assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM session_events WHERE session_id = ?", Long.class, firstId))
+                    .as("events in the stream").isEqualTo(1);
+                assertThat(jdbc.queryForObject(
+                    "SELECT count(*) FROM outbox WHERE subject = ?", Long.class, firstId.toString()))
+                    .as("outbox rows for the session").isEqualTo(1);
+            } finally {
+                pool.shutdownNow();
+            }
+        }
     }
 
     // ───────────────────────────── helpers ────────────────────────────

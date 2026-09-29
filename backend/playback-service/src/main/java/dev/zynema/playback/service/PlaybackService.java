@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -61,13 +62,14 @@ public class PlaybackService {
 
         Optional<PlaybackSession> existing = findOpenSession(request);
         if (existing.isPresent()) {
-            PlaybackSession session = existing.get();
-            dependencies.relayProgress(session.getProfileId(), session.getContentId(), session.getEpisodeId(),
-                session.getPositionSeconds(), session.getDurationSeconds());
-            return mapper.toDto(session);
+            return resume(existing.get());
         }
 
-        enforceConcurrencyLimit(userId, entitlements.maxStreams());
+        Optional<PlaybackSession> claimedByRacingStart =
+            enforceConcurrencyLimit(userId, entitlements.maxStreams(), request);
+        if (claimedByRacingStart.isPresent()) {
+            return resume(claimedByRacingStart.get());
+        }
 
         PlaybackEvent.SessionStarted started = new PlaybackEvent.SessionStarted(UUID.randomUUID(), userId,
             request.profileId(), request.contentId(), request.episodeId(), content.title(), request.device(),
@@ -75,12 +77,16 @@ public class PlaybackService {
 
         SessionState state = eventStore.append(SessionStream.empty(), started).state();
         if (!projection.create(state)) {
-            // Two starts raced: the partial index kept a single open session,
-            // and this transaction took its event and outbox rows with it.
+            // Two starts raced: the partial index kept a single open session.
+            // Read the winner first, then discard this transaction's event and
+            // outbox rows: without the rollback the loser would commit an
+            // orphan SessionStarted with no session behind it (ADR-0027).
+            PlaybackSession winner = findOpenSession(request).orElseThrow(() -> new ConflictException(
+                "This title is being started concurrently on the same profile; retry the request"));
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             log.info("Concurrent start for profile {} and content {}: returning the open session",
                 request.profileId(), request.contentId());
-            return mapper.toDto(findOpenSession(request).orElseThrow(() -> new ConflictException(
-                "This title is being started concurrently on the same profile; retry the request")));
+            return mapper.toDto(winner);
         }
         return mapper.toDto(state);
     }
@@ -142,12 +148,29 @@ public class PlaybackService {
         return result.entitlements();
     }
 
-    private void enforceConcurrencyLimit(UUID userId, int maxStreams) {
+    /**
+     * The limit counts open streams, but a start that races another start of
+     * the same title must not read that title as "another stream": when the
+     * occupied slot is the caller's own session, it is returned to resume.
+     */
+    private Optional<PlaybackSession> enforceConcurrencyLimit(UUID userId, int maxStreams,
+                                                              StartSessionRequest request) {
         long open = sessionRepository.countByUserIdAndStatusNot(userId, SessionStatus.ENDED);
-        if (open >= maxStreams) {
+        if (open < maxStreams) {
+            return Optional.empty();
+        }
+        Optional<PlaybackSession> sameTitle = findOpenSession(request);
+        if (sameTitle.isEmpty()) {
             throw new BusinessRuleException(
                 "The plan allows %d concurrent stream(s) and %d are already open".formatted(maxStreams, open));
         }
+        return sameTitle;
+    }
+
+    private SessionDto resume(PlaybackSession session) {
+        dependencies.relayProgress(session.getProfileId(), session.getContentId(), session.getEpisodeId(),
+            session.getPositionSeconds(), session.getDurationSeconds());
+        return mapper.toDto(session);
     }
 
     private Optional<PlaybackSession> findOpenSession(StartSessionRequest request) {
