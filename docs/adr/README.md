@@ -38,3 +38,4 @@ the choice made, and its consequences.
 | 0020 | [Version hygiene — let the BOM decide](0020-version-hygiene.md)                         | Accepted |
 | 0021 | [The BFF composes screens, it does not enforce business rules](0021-bff-composition.md) | Accepted |
 | 0022 | [A projected read model for the catalogue](0022-catalog-read-model.md)                  | Accepted |
+| 0023 | [A one-shot FFmpeg worker with object storage as the hand-off](0023-video-pipeline.md)  | Accepted |

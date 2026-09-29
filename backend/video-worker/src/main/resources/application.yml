@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: video-worker
+  main:
+    web-application-type: none
+    banner-mode: 'off'
+
+zynema:
+  worker:
+    # One directory per job, deleted when the job ends.
+    workspace: ${WORKER_WORKSPACE:/tmp/zynema-video-worker}
+    storage:
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:zynema-admin}
+      secret-key: ${MINIO_SECRET_KEY:change-me-in-real-life}
+      source-bucket: ${MINIO_BUCKET_VIDEOS:zynema-videos}
+      hls-bucket: ${MINIO_BUCKET_HLS:zynema-hls}
+      path-style: true
+    catalog:
+      base-url: ${CATALOG_URL:http://localhost:8083}
+      token:
+        url: ${MEDIA_TOKEN_URL:http://localhost:8180/realms/zynema/protocol/openid-connect/token}
+        client-id: ${MEDIA_CLIENT_ID:zynema-media}
+        client-secret: ${MEDIA_CLIENT_SECRET:zynema-media-dev-secret}
+    ffmpeg:
+      binary: ${FFMPEG_BINARY:ffmpeg}
+      # Every rendition is cut on the same boundaries, so a player can switch
+      # quality without refetching the segment it is playing.
+      segment-seconds: 6
+      # A hung transcode must not hold a job forever.
+      timeout: 30m
+      # The ladder is a product decision, not code: 240p for phones on bad
+      # networks up to 1080p for the living room.
+      renditions:
+        - name: 240p
+          width: 426
+          height: 240
+          video-bitrate-kbps: 400
+          audio-bitrate-kbps: 64
+        - name: 480p
+          width: 854
+          height: 480
+          video-bitrate-kbps: 1400
+          audio-bitrate-kbps: 128
+        - name: 720p
+          width: 1280
+          height: 720
+          video-bitrate-kbps: 2800
+          audio-bitrate-kbps: 128
+        - name: 1080p
+          width: 1920
+          height: 1080
+          video-bitrate-kbps: 5000
+          audio-bitrate-kbps: 192

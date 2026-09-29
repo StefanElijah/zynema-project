@@ -316,6 +316,98 @@ The `api-gateway` and `bff-service` simply do not add the `db` file. Remember a
 local `application.yml` cannot override the shared value: config-server
 properties win, which is exactly why the exception lives in the repository.
 
+## **[F6] `docker compose up` dies pulling MinIO: "pull access denied"**
+
+Symptom: the storage profile cannot start; pulling `minio/minio` fails with
+`repository does not exist or may require 'docker login'`, and
+`quay.io/minio/aistor/minio` starts but answers `Access denied. No license is
+installed`.
+
+Cause: MinIO no longer publishes community images to Docker Hub or quay, and
+the official image is now the licensed AIStor server.
+
+Fix: the platform uses Chainguard's source-built image, pinned by digest
+(`cgr.dev/chainguard/minio@sha256:...`) in both `docker-compose.yml` and the
+worker tests. If the digest ever disappears, re-pin from
+`docker inspect --format '{{index .RepoDigests 0}}' cgr.dev/chainguard/minio:latest`
+and update both places.
+
+## **[F6] MinIO shows no health status / the bucket init fails on first boot**
+
+The Chainguard image ships no `curl`, `wget` or `nc`, so the compose healthcheck
+was removed and MinIO has no `(healthy)` marker. Dependents use
+`condition: service_started`.
+
+Bucket creation is **`make storage-init`**
+(`docker compose run --rm video-worker --init-storage`), which retries for 30
+seconds until the server answers. If it still fails, check
+`docker logs zynema-minio` and that ports 9000/9001 are free.
+
+## **[F6] A title returns 409 and never plays**
+
+`409 CONTENT_NOT_READY` means `hls_path` is null: the video pipeline has not
+rendered that title yet (or the run failed before the catalogue callback).
+
+```bash
+make up-storage            # MinIO + nginx-hls + buckets
+make fetch-samples         # Creative-Commons clips into the source bucket
+make transcode             # the demo movie and one Arcane episode
+```
+
+Then verify both halves agree:
+
+```bash
+curl -s localhost:8083/api/v1/catalog/movies/dune-part-two | grep hlsPath
+docker exec zynema-minio sh -c 'ls /data'
+```
+
+A failed job leaves `hls_path` untouched on purpose; fix the cause and re-run.
+
+## **[F6] Segments answer 403 even though the playlist loads**
+
+The presigned URLs in a variant playlist are valid for **60 seconds** and are
+generated for the internal endpoint (`http://minio:9000`), then handed to the
+browser as an nginx URL. Two things break that contract:
+
+1. **The Host header.** SigV4 signs the host. `infra/nginx/hls.conf` must keep
+   `proxy_set_header Host minio:9000;` — with `$host` MinIO would reject a
+   perfectly valid signature.
+2. **Clock skew.** MinIO validates `X-Amz-Date` against its own clock; a VM
+   that slept for a day fails every segment until the clock syncs.
+
+Also check that MinIO is only published on `127.0.0.1:9000` (nginx is the
+public path) and that nginx is serving `/minio/` — the browser never talks to
+MinIO directly.
+
+## **[F6] The worker cannot reach the catalogue during local development**
+
+When the services run on the host (jars) and the worker runs in Docker, the
+container's `catalog-service:8083` does not resolve. Override it:
+
+```bash
+docker compose run --rm -e CATALOG_URL=http://host.docker.internal:8083 \
+  video-worker --content=dune-part-two --source=samples/demo-movie.mp4
+```
+
+Keycloak and MinIO are containers either way, so `keycloak:8080` and
+`minio:9000` keep working from inside the worker.
+
+## **[F6] The realm export grew a client but the running Keycloak ignores it**
+
+Keycloak imports the realm only when it does not exist. Adding `zynema-media`
+(or any client/role) to `infra/keycloak/realm-export/zynema-realm.json`
+requires a re-import in dev:
+
+```bash
+docker compose rm -sf keycloak
+docker volume rm zynema-keycloak-data       # users and sessions only
+docker compose --profile auth up -d keycloak
+```
+
+Application data (subscriptions, watch history) lives in PostgreSQL, not
+Keycloak, so it survives: the seeded users come back with the same
+deterministic ids.
+
 ## **[F5] Tempo answers with an empty trace list right after generating traffic**
 
 Symptom: the services log normal activity, a request traces through the gateway,

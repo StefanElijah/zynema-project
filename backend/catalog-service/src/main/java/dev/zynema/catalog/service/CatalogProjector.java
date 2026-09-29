@@ -48,11 +48,11 @@ public class CatalogProjector {
     private static final String UPSERT = """
         INSERT INTO content_read_model
             (content_id, slug, type, status, title, release_year, maturity_rating, average_rating,
-             popularity, genre_slugs, summary, detail, episodes, search_vector, updated_at)
+             popularity, genre_slugs, summary, detail, episodes, episodes_by_id, search_vector, updated_at)
         VALUES
             (:contentId, :slug, :type, :status, :title, :releaseYear, :maturityRating, :averageRating,
              :popularity, CAST(:genreSlugs AS jsonb), CAST(:summary AS jsonb), CAST(:detail AS jsonb),
-             CAST(:episodes AS jsonb), to_tsvector('simple', :title), now())
+             CAST(:episodes AS jsonb), CAST(:episodesById AS jsonb), to_tsvector('simple', :title), now())
         ON CONFLICT (content_id) DO UPDATE SET
             slug = EXCLUDED.slug,
             type = EXCLUDED.type,
@@ -66,6 +66,7 @@ public class CatalogProjector {
             summary = EXCLUDED.summary,
             detail = EXCLUDED.detail,
             episodes = EXCLUDED.episodes,
+            episodes_by_id = EXCLUDED.episodes_by_id,
             search_vector = EXCLUDED.search_vector,
             updated_at = now()
         """;
@@ -92,7 +93,7 @@ public class CatalogProjector {
     public ContentDetailDto project(Content content) {
         ContentSummaryDto summary = contentMapper.toSummary(content);
         ContentDetailDto detail = assembleDetail(content);
-        Map<String, List<EpisodeDto>> episodes = episodesBySeason(content);
+        EpisodePayloads episodes = episodesOf(content);
 
         jdbc.update(UPSERT, new MapSqlParameterSource()
             .addValue("contentId", content.getId())
@@ -107,7 +108,8 @@ public class CatalogProjector {
             .addValue("genreSlugs", json(genreSlugs(content)))
             .addValue("summary", json(summary))
             .addValue("detail", json(detail))
-            .addValue("episodes", json(episodes)));
+            .addValue("episodes", json(episodes.bySeason()))
+            .addValue("episodesById", json(episodes.byId())));
         return detail;
     }
 
@@ -144,16 +146,26 @@ public class CatalogProjector {
             .build();
     }
 
-    private Map<String, List<EpisodeDto>> episodesBySeason(Content content) {
+    /**
+     * Two shapes of the same data: by season for the player's episode picker,
+     * and flat by id for playback, which holds an episode id and nothing else.
+     */
+    private EpisodePayloads episodesOf(Content content) {
         if (content.getType() != ContentType.SERIES) {
-            return Map.of();
+            return new EpisodePayloads(Map.of(), Map.of());
         }
         Map<String, List<EpisodeDto>> bySeason = new LinkedHashMap<>();
+        Map<String, EpisodeDto> byId = new LinkedHashMap<>();
         for (Season season : seasonRepository.findByContentIdOrderBySeasonNumberAsc(content.getId())) {
-            bySeason.put(String.valueOf(season.getSeasonNumber()),
-                episodeMapper.toDtoList(episodeRepository.findBySeasonIdOrderByEpisodeNumberAsc(season.getId())));
+            List<EpisodeDto> episodes = episodeMapper.toDtoList(
+                episodeRepository.findBySeasonIdOrderByEpisodeNumberAsc(season.getId()));
+            bySeason.put(String.valueOf(season.getSeasonNumber()), episodes);
+            episodes.forEach(episode -> byId.put(String.valueOf(episode.id()), episode));
         }
-        return bySeason;
+        return new EpisodePayloads(bySeason, byId);
+    }
+
+    private record EpisodePayloads(Map<String, List<EpisodeDto>> bySeason, Map<String, EpisodeDto> byId) {
     }
 
     private List<String> genreSlugs(Content content) {

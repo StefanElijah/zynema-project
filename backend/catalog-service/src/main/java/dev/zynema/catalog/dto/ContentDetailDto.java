@@ -31,6 +31,7 @@ public record ContentDetailDto(
     String posterUrl,
     String backdropUrl,
     String trailerUrl,
+    String hlsPath,
     BigDecimal averageRating,
     Integer popularity,
     ContentStatus status,

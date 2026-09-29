@@ -1,5 +1,6 @@
 package dev.zynema.catalog;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -266,6 +267,100 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
             .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/catalog/movies/gladiator"))
+            .andExpect(status().isNotFound());
+    }
+
+    // ───────────────────── video pipeline callbacks ────────────────────
+
+    @Test
+    @DisplayName("the pipeline publishes a title's master playlist")
+    void publishesAContentHlsPath() throws Exception {
+        String id = idOf("dune-part-one");
+
+        mockMvc.perform(put("/api/v1/catalog/admin/contents/" + id + "/hls-path")
+                .with(asContentManager())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"hlsPath": "hls/contents/%s/master.m3u8"}
+                    """.formatted(id)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.hlsPath", is("hls/contents/" + id + "/master.m3u8")));
+
+        mockMvc.perform(get("/api/v1/catalog/movies/dune-part-one"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.hlsPath", is("hls/contents/" + id + "/master.m3u8")));
+    }
+
+    @Test
+    @DisplayName("the pipeline publishes an episode's master playlist")
+    void publishesAnEpisodeHlsPath() throws Exception {
+        String episodeId = JsonPath.read(mockMvc.perform(
+                get("/api/v1/catalog/series/arcane/seasons/1/episodes")).andReturn()
+            .getResponse().getContentAsString(), "$[0].id");
+
+        mockMvc.perform(put("/api/v1/catalog/admin/episodes/" + episodeId + "/hls-path")
+                .with(asContentManager())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"hlsPath": "hls/episodes/%s/master.m3u8"}
+                    """.formatted(episodeId)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.hlsPath", is("hls/episodes/" + episodeId + "/master.m3u8")));
+
+        mockMvc.perform(get("/api/v1/catalog/episodes/" + episodeId))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id", is(episodeId)))
+            .andExpect(jsonPath("$.hlsPath", is("hls/episodes/" + episodeId + "/master.m3u8")));
+    }
+
+    @Test
+    @DisplayName("an HLS path must be an object key, not a URL")
+    void hlsPathMustBeAnObjectKey() throws Exception {
+        String id = idOf("interstellar");
+
+        mockMvc.perform(put("/api/v1/catalog/admin/contents/" + id + "/hls-path")
+                .with(asContentManager())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"hlsPath": "http://localhost:9000/zynema-hls/master.m3u8?X-Amz-Signature=abc"}
+                    """))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.message", is("Validation failed")));
+
+        mockMvc.perform(put("/api/v1/catalog/admin/contents/" + id + "/hls-path")
+                .with(asContentManager())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"hlsPath": "  "}
+                    """))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("publishing renditions needs the management role like any other write")
+    void hlsPathRequiresTheRole() throws Exception {
+        String id = idOf("gladiator");
+
+        mockMvc.perform(put("/api/v1/catalog/admin/contents/" + id + "/hls-path")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"hlsPath": "hls/contents/%s/master.m3u8"}
+                    """.formatted(id)))
+            .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(put("/api/v1/catalog/admin/contents/" + id + "/hls-path")
+                .with(asPlainUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                    {"hlsPath": "hls/contents/%s/master.m3u8"}
+                    """.formatted(id)))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("an unknown episode id is a 404 on the playback read")
+    void unknownEpisodeIsNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/episodes/e0000000-0000-4000-8000-0000000000ff"))
             .andExpect(status().isNotFound());
     }
 

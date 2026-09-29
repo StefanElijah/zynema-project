@@ -37,7 +37,18 @@ up-core: env ## Start core (Eureka, Config, Gateway, DBs, Kafka, base services)
 .PHONY: up
 up: env ## Start core + auth
 	$(COMPOSE) --profile core --profile auth up -d
-	@echo "✅ Stack up. Eureka: http://localhost:8761 | Keycloak: http://localhost:8081"
+	@echo "✅ Stack up. Eureka: http://localhost:8761 | Keycloak: http://localhost:8180"
+
+.PHONY: up-storage
+up-storage: env ## Start the storage profile (MinIO + nginx-hls) and create buckets
+	$(COMPOSE) --profile storage up -d minio nginx-hls
+	$(MAKE) storage-init
+	@echo "✅ Storage up. MinIO console: http://localhost:9001 | HLS edge: http://localhost:8090"
+
+.PHONY: up-observability
+up-observability: env ## Start the observability profile (Prometheus, Grafana, Loki, Tempo)
+	$(COMPOSE) --profile observability up -d
+	@echo "✅ Observability up. Grafana: http://localhost:3000"
 
 .PHONY: up-full
 up-full: env ## Start everything (requires 16GB+ RAM)
@@ -146,10 +157,18 @@ kafka-topics: ## List Kafka topics
 keycloak-shell: ## Open kc.sh inside Keycloak container
 	$(COMPOSE) exec keycloak /bin/bash
 
-.PHONY: seed
-seed: ## Load demo seed data
-	./infra/scripts/seed.sh
+# ──────────────────────────── VIDEO PIPELINE ────────────────────────────
+
+.PHONY: storage-init
+storage-init: ## Create the MinIO buckets used by the pipeline (idempotent)
+	$(COMPOSE) run --rm video-worker --init-storage
+
+.PHONY: fetch-samples
+fetch-samples: ## Download and import the Creative-Commons demo videos
+	./infra/scripts/fetch-samples.sh
 
 .PHONY: transcode
-transcode: ## Transcode demo videos with FFmpeg
-	./infra/scripts/transcode.sh
+transcode: ## Transcode the demo movie and one Arcane episode into HLS
+	$(COMPOSE) run --rm video-worker --content=dune-part-two --source=samples/demo-movie.mp4
+	$(COMPOSE) run --rm video-worker --episode=e1000000-0000-4000-8000-000000000001 --source=samples/demo-episode.mp4
+	@echo "✅ Renditions published. Start a session as demo/demo and watch it."

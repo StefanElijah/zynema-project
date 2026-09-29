@@ -120,6 +120,17 @@ public class CatalogReadRepository {
         return Optional.ofNullable(bySeason.get(String.valueOf(seasonNumber)));
     }
 
+    /**
+     * The flat episode index: playback holds an episode id and needs its HLS
+     * path without walking the season-shaped payload.
+     */
+    public Optional<EpisodeDto> findEpisodeById(UUID episodeId) {
+        List<String> payloads = jdbc.queryForList(
+            "SELECT episodes_by_id -> :id FROM content_read_model WHERE episodes_by_id -> :id IS NOT NULL",
+            new MapSqlParameterSource("id", episodeId.toString()), String.class);
+        return payloads.stream().findFirst().map(json -> read(json, EpisodeDto.class));
+    }
+
     public long count() {
         Long total = jdbc.queryForObject("SELECT count(*) FROM content_read_model",
             new MapSqlParameterSource(), Long.class);

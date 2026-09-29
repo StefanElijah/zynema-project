@@ -3,11 +3,15 @@ package dev.zynema.catalog.service;
 import dev.zynema.catalog.config.CacheConfig;
 import dev.zynema.catalog.domain.Content;
 import dev.zynema.catalog.domain.ContentStatus;
+import dev.zynema.catalog.domain.Episode;
 import dev.zynema.catalog.domain.Genre;
 import dev.zynema.catalog.dto.ContentCreateRequest;
 import dev.zynema.catalog.dto.ContentDetailDto;
 import dev.zynema.catalog.dto.ContentUpdateRequest;
+import dev.zynema.catalog.dto.EpisodeDto;
+import dev.zynema.catalog.mapper.EpisodeMapper;
 import dev.zynema.catalog.repository.ContentRepository;
+import dev.zynema.catalog.repository.EpisodeRepository;
 import dev.zynema.catalog.repository.GenreRepository;
 import dev.zynema.common.exception.BusinessRuleException;
 import dev.zynema.common.exception.ResourceNotFoundException;
@@ -40,7 +44,9 @@ import java.util.stream.Collectors;
 public class CatalogCommandService {
 
     private final ContentRepository contentRepository;
+    private final EpisodeRepository episodeRepository;
     private final GenreRepository genreRepository;
+    private final EpisodeMapper episodeMapper;
     private final CatalogProjector projector;
 
     @CacheEvict(cacheNames = {
@@ -87,6 +93,43 @@ public class CatalogCommandService {
         }
         contentRepository.deleteById(id);
         projector.remove(id);
+    }
+
+    // ─────────────────── video pipeline callbacks (Fase 6) ───────────────────
+
+    /**
+     * Publishes a title's HLS master playlist. Until this runs, {@code hls_path}
+     * is null and playback answers "not ready" — the catalogue, not the storage
+     * bucket, is what makes content playable.
+     */
+    @CacheEvict(cacheNames = {
+        CacheConfig.CONTENT_LIST, CacheConfig.CONTENT_DETAIL,
+        CacheConfig.SEASON_EPISODES, CacheConfig.GENRES
+    }, allEntries = true)
+    public ContentDetailDto setContentHlsPath(UUID id, String hlsPath) {
+        Content content = contentRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Content", id));
+        content.setHlsPath(hlsPath);
+        return projector.project(contentRepository.saveAndFlush(content));
+    }
+
+    /**
+     * Publishes one episode's playlist. Episodes live inside their content's
+     * projection, so the parent's row is re-projected: the episode index, the
+     * season payload and the detail view refresh together.
+     */
+    @CacheEvict(cacheNames = {
+        CacheConfig.CONTENT_LIST, CacheConfig.CONTENT_DETAIL,
+        CacheConfig.SEASON_EPISODES, CacheConfig.GENRES
+    }, allEntries = true)
+    public EpisodeDto setEpisodeHlsPath(UUID episodeId, String hlsPath) {
+        Episode episode = episodeRepository.findById(episodeId)
+            .orElseThrow(() -> new ResourceNotFoundException("Episode", episodeId));
+        episode.setHlsPath(hlsPath);
+
+        Content parent = episode.getSeason().getContent();
+        projector.project(parent);
+        return episodeMapper.toDto(episode);
     }
 
     // ───────────────────────────── helpers ────────────────────────────

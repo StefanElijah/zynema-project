@@ -135,12 +135,18 @@ before debugging the configuration.
 
 ## Phase 6 — Video pipeline
 
-- [ ] FFmpeg HLS multi-bitrate renditions (240p/480p/720p/1080p)
-- [ ] MinIO storage via AWS SDK (S3-compatible)
-- [ ] Nginx HLS delivery with CORS
+- [x] FFmpeg HLS multi-bitrate renditions (240p/480p/720p/1080p): one pass, four
+      aligned renditions with forced keyframes, in a one-shot `video-worker`
+      job (ADR-0023)
+- [x] MinIO storage via AWS SDK (S3-compatible): private buckets, uploads and
+      source import through the SDK, Chainguard image pinned by digest — the
+      worker also replaces the `mc`-based bucket init
+- [x] Nginx HLS delivery with CORS: the `/minio/` edge proxies MinIO with the
+      host the signature was computed for (ADR-0024)
 - [ ] `playback-service` issues time-limited signed URLs
 - [ ] Frontend playback with hls.js
-- [ ] Creative-Commons test videos
+- [x] Creative-Commons test videos: `make fetch-samples` imports Blender open
+      movie clips (with a synthetic fallback for offline work)
 
 ## Phase 7 — Async messaging (Kafka)
 

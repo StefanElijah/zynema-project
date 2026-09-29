@@ -88,6 +88,14 @@ public class Content {
     @Column(name = "trailer_url", length = 500)
     private String trailerUrl;
 
+    /**
+     * Object key of the HLS master playlist, written by the video pipeline
+     * (Fase 6). {@code null} means "no rendition yet": playback refuses to
+     * start rather than presign a path that does not exist.
+     */
+    @Column(name = "hls_path", length = 500)
+    private String hlsPath;
+
     @Column(name = "average_rating", precision = 3, scale = 1)
     private BigDecimal averageRating;
 

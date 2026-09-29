@@ -116,6 +116,19 @@ public class CatalogQueryService {
                 "Season %d of %s".formatted(seasonNumber, slug)));
     }
 
+    /**
+     * One episode by id, with its HLS path. Called by playback, which has the
+     * episode id on the session and needs to know where the video lives.
+     *
+     * <p>Not cached: a single indexed row in the read model is already the
+     * cheapest read in the service, and the episode byte payloads do not fit
+     * the list-shaped cache region.
+     */
+    public EpisodeDto getEpisodeById(UUID episodeId) {
+        return readRepository.findEpisodeById(episodeId)
+            .orElseThrow(() -> new ResourceNotFoundException("Episode", episodeId));
+    }
+
     // ───────────────────────────── genres ─────────────────────────────
 
     @Cacheable(cacheNames = CacheConfig.GENRES, key = "'all'")

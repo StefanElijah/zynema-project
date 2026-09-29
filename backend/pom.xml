@@ -36,6 +36,9 @@
           * springdoc: 2.8.15+ has a path-pattern regression with Spring
             Framework 6.2 on WebFlux.
 
+          * aws-sdk-v2: Spring Boot does not manage it at all, so pinning is
+            the only way to get a version; bumped deliberately (see ADR-0020).
+
           Everything else is managed by the Spring Boot BOM. In particular
           micrometer-tracing, opentelemetry and flyway used to be pinned to
           older versions here, which silently downgraded Boot's managed
@@ -45,6 +48,7 @@
           to whatever we wrote instead of the version Boot tests against.
         -->
         <testcontainers.version>1.21.4</testcontainers.version>
+        <awssdk.version>2.55.7</awssdk.version>
     </properties>
 
     <modules>
@@ -60,6 +64,7 @@
         <module>playback-service</module>
         <module>bff-service</module>
         <module>notification-service</module>
+        <module>video-worker</module>
     </modules>
 
     <dependencyManagement>
@@ -78,6 +83,18 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!--
+              AWS SDK v2 BOM: not managed by Boot. Used by the video worker
+              (upload/download) and playback-service (presigned URLs).
+            -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

@@ -94,3 +94,6 @@ playwright/.cache/
 # Local config git repo (initialized separately, has its own .git)
 # We DO want to track the YAML/MD config files, just not the inner .git
 infra/config-repo/.git/
+
+# Downloaded media samples (make fetch-samples)
+.cache/
