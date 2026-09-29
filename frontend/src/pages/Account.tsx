@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from 'react-oidc-context';
 import { apiClient } from '../lib/api/client';
+import type { AuthMe, UserAccount } from '../lib/api/types';
 import { displayNameOf, rolesOf } from '../lib/auth/session';
 
-function Row({ label, value }) {
+function Row({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="flex justify-between gap-6 border-b border-white/10 py-2 text-sm">
       <span className="text-white/50">{label}</span>
@@ -15,21 +16,21 @@ function Row({ label, value }) {
 export default function Account() {
   const auth = useAuth();
 
-  const authMe = useQuery({
+  const authMe = useQuery<AuthMe, Error>({
     queryKey: ['auth', 'me'],
-    queryFn: async () => (await apiClient.get('/auth/me')).data,
+    queryFn: async () => (await apiClient.get<AuthMe>('/auth/me')).data,
   });
 
-  const account = useQuery({
+  const account = useQuery<UserAccount, Error>({
     queryKey: ['users', 'me'],
-    queryFn: async () => (await apiClient.get('/users/me')).data,
+    queryFn: async () => (await apiClient.get<UserAccount>('/users/me')).data,
   });
 
   if (authMe.isLoading || account.isLoading) {
     return <div className="py-24 text-center text-white/70">Cargando tu cuenta…</div>;
   }
 
-  if (authMe.isError || account.isError) {
+  if (authMe.isError || account.isError || !authMe.data || !account.data) {
     return (
       <div className="py-24 text-center">
         <p className="text-red-400">No se pudo cargar la cuenta.</p>
@@ -70,9 +71,9 @@ export default function Account() {
         <Row label="Nombre" value={profile.displayName} />
         <Row label="Idioma" value={profile.preferredLanguage} />
         <Row label="Perfiles" value={profile.profiles?.length ?? 0} />
-        {profile.profiles?.length > 0 && (
+        {(profile.profiles?.length ?? 0) > 0 && (
           <ul className="mt-4 flex flex-wrap gap-2">
-            {profile.profiles.map((item) => (
+            {profile.profiles?.map((item) => (
               <li
                 key={item.id}
                 className="rounded-full border border-white/15 px-3 py-1 text-xs text-white/80"

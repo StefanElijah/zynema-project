@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+import type { User } from 'oidc-client-ts';
 
 vi.mock('../auth/userManager', () => ({
   userManager: {
@@ -11,7 +13,10 @@ vi.mock('../auth/userManager', () => ({
 const { userManager } = await import('../auth/userManager');
 const { apiClient } = await import('./client');
 
-const okResponse = (config, data = { ok: true }) => ({
+const okResponse = (
+  config: InternalAxiosRequestConfig,
+  data: unknown = { ok: true }
+): AxiosResponse => ({
   data,
   status: 200,
   statusText: 'OK',
@@ -19,8 +24,16 @@ const okResponse = (config, data = { ok: true }) => ({
   config,
 });
 
-const unauthorized = (config) =>
-  Object.assign(new Error('Unauthorized'), { config, response: { status: 401 } });
+const unauthorized = (config: InternalAxiosRequestConfig): AxiosError =>
+  Object.assign(new Error('Unauthorized'), {
+    config,
+    response: { status: 401, statusText: 'Unauthorized', headers: {}, config, data: null },
+  }) as AxiosError;
+
+// The interceptors only read `access_token` and `expired`, so a partial user is
+// enough; casting keeps the fixtures honest about being partial.
+const partialUser = (accessToken: string | null, expired = false): User =>
+  ({ access_token: accessToken, expired }) as User;
 
 describe('api client interceptors', () => {
   beforeEach(() => {
@@ -28,8 +41,8 @@ describe('api client interceptors', () => {
   });
 
   it('attaches the access token to every request', async () => {
-    userManager.getUser.mockResolvedValue({ access_token: 'token-123', expired: false });
-    let authorization;
+    vi.mocked(userManager.getUser).mockResolvedValue(partialUser('token-123'));
+    let authorization: unknown;
     apiClient.defaults.adapter = async (config) => {
       authorization = config.headers.Authorization;
       return okResponse(config);
@@ -41,8 +54,8 @@ describe('api client interceptors', () => {
   });
 
   it('omits the header when there is no usable token', async () => {
-    userManager.getUser.mockResolvedValue({ access_token: 'token-123', expired: true });
-    let authorization = 'unset';
+    vi.mocked(userManager.getUser).mockResolvedValue(partialUser('token-123', true));
+    let authorization: unknown = 'unset';
     apiClient.defaults.adapter = async (config) => {
       authorization = config.headers.Authorization;
       return okResponse(config);
@@ -54,8 +67,8 @@ describe('api client interceptors', () => {
   });
 
   it('renews once and replays the request when the token is rejected', async () => {
-    userManager.getUser.mockResolvedValue({ access_token: 'stale', expired: false });
-    userManager.signinSilent.mockResolvedValue({ access_token: 'fresh' });
+    vi.mocked(userManager.getUser).mockResolvedValue(partialUser('stale'));
+    vi.mocked(userManager.signinSilent).mockResolvedValue(partialUser('fresh'));
 
     let attempts = 0;
     apiClient.defaults.adapter = async (config) => {
@@ -74,7 +87,7 @@ describe('api client interceptors', () => {
   });
 
   it('sends the visitor to the login flow when there is no session at all', async () => {
-    userManager.getUser.mockResolvedValue(null);
+    vi.mocked(userManager.getUser).mockResolvedValue(null);
     apiClient.defaults.adapter = async (config) => {
       throw unauthorized(config);
     };
@@ -84,8 +97,8 @@ describe('api client interceptors', () => {
   });
 
   it('renews at most once and does not loop back to login if the fresh token is also rejected', async () => {
-    userManager.getUser.mockResolvedValue({ access_token: 'stale', expired: false });
-    userManager.signinSilent.mockResolvedValue({ access_token: 'fresh' });
+    vi.mocked(userManager.getUser).mockResolvedValue(partialUser('stale'));
+    vi.mocked(userManager.signinSilent).mockResolvedValue(partialUser('fresh'));
     let attempts = 0;
     apiClient.defaults.adapter = async (config) => {
       attempts += 1;

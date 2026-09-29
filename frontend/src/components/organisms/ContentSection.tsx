@@ -1,31 +1,39 @@
 import { useNavigate } from 'react-router-dom';
 import ContentCard from '../molecules/ContentCard';
+import type { ContentItem } from '../../data/types';
 import '../../styles/content-section.css';
+
+interface ContentSectionProps {
+  title: string;
+  items?: ContentItem[];
+  containerClass?: string;
+  customMargins?: boolean;
+}
 
 export default function ContentSection({
   title,
   items = [],
   containerClass = 'custom-container',
   customMargins = true,
-}) {
+}: ContentSectionProps) {
   const navigate = useNavigate();
 
   // The catalogue accepts a slug or an id at /watch, so the card can send
   // whichever it has (Fase 6 wires the player; Fase 8 replaces the mock data).
-  const handlePlay = (item) => navigate(`/watch/${item.id}`);
-  const handleAdd = (item) => {
+  const handlePlay = (item: ContentItem) => navigate(`/watch/${item.id}`);
+  const handleAdd = (item: ContentItem) => {
     console.log('add', item.id);
   };
-  const handleLike = (item) => {
+  const handleLike = (item: ContentItem) => {
     console.log('like', item.id);
   };
-  const handleDislike = (item) => {
+  const handleDislike = (item: ContentItem) => {
     console.log('dislike', item.id);
   };
-  const handleFavorite = (item) => {
+  const handleFavorite = (item: ContentItem) => {
     console.log('fav', item.id);
   };
-  const handleDismiss = (item) => {
+  const handleDismiss = (item: ContentItem) => {
     console.log('dismiss', item.id);
   };
 

@@ -1,3 +1,4 @@
+import { ReactNode } from 'react';
 import { useAuth } from 'react-oidc-context';
 
 /**
@@ -6,7 +7,7 @@ import { useAuth } from 'react-oidc-context';
  * Shows an explicit sign-in panel instead of redirecting automatically: an
  * unexpected redirect loop is much harder to debug than a button.
  */
-export default function RequireAuth({ children }) {
+export default function RequireAuth({ children }: { children: ReactNode }) {
   const auth = useAuth();
 
   if (auth.isLoading) {
@@ -51,5 +52,5 @@ export default function RequireAuth({ children }) {
     );
   }
 
-  return children;
+  return <>{children}</>;
 }

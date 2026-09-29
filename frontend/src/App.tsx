@@ -24,7 +24,7 @@ export default function App() {
             }
           />
           {/* Watching needs an account and an active plan; the page shows the
-                paywall, and playback-service enforces it. */}
+              paywall, and playback-service enforces it. */}
           <Route
             path="/watch/:contentId"
             element={

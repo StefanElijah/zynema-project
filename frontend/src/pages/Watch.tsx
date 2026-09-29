@@ -4,12 +4,15 @@ import { useAuth } from 'react-oidc-context';
 import Hls from 'hls.js';
 import { apiClient } from '../lib/api/client';
 import { startPlayback, heartbeat, endSession, PLAYER_MESSAGES } from '../lib/api/playback';
+import type { AccountView, ContentView, PlaybackSession, UserProfile } from '../lib/api/types';
 
-const REASON_MESSAGES = {
+const REASON_MESSAGES: Record<string, string> = {
   AUTHENTICATION_REQUIRED: PLAYER_MESSAGES.AUTHENTICATION_REQUIRED,
   SUBSCRIPTION_REQUIRED: PLAYER_MESSAGES.SUBSCRIPTION_REQUIRED,
   UNAVAILABLE: PLAYER_MESSAGES.UNAVAILABLE,
 };
+
+type PlayerStatus = 'loading' | 'ready' | 'starting' | 'playing' | 'blocked' | 'error';
 
 /**
  * The player (Fase 6).
@@ -24,27 +27,27 @@ const REASON_MESSAGES = {
  * (ADR-0024), so nothing in this component formats a video URL.
  */
 export default function Watch() {
-  const { contentId } = useParams();
+  const { contentId } = useParams<{ contentId: string }>();
   const auth = useAuth();
 
-  const [content, setContent] = useState(null);
-  const [profiles, setProfiles] = useState([]);
-  const [profileId, setProfileId] = useState(null);
-  const [status, setStatus] = useState('loading'); // loading | ready | starting | playing | blocked | error
-  const [message, setMessage] = useState(null);
+  const [content, setContent] = useState<ContentView | null>(null);
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
+  const [profileId, setProfileId] = useState<string | null>(null);
+  const [status, setStatus] = useState<PlayerStatus>('loading');
+  const [message, setMessage] = useState<string | null>(null);
 
-  const videoRef = useRef(null);
-  const hlsRef = useRef(null);
-  const sessionRef = useRef(null);
-  const heartbeatRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
+  const sessionRef = useRef<PlaybackSession | null>(null);
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const [detail, account] = await Promise.all([
-          apiClient.get(`/web/catalog/${contentId}`),
-          apiClient.get('/web/account'),
+          apiClient.get<ContentView>(`/web/catalog/${contentId}`),
+          apiClient.get<AccountView>('/web/account'),
         ]);
         if (cancelled) return;
 
@@ -56,13 +59,19 @@ export default function Watch() {
           setStatus('ready');
         } else {
           setStatus('blocked');
-          setMessage(REASON_MESSAGES[detail.data.playback?.reason] ?? PLAYER_MESSAGES.UNAVAILABLE);
+          const reason = detail.data.playback?.reason;
+          setMessage((reason && REASON_MESSAGES[reason]) || PLAYER_MESSAGES.UNAVAILABLE);
         }
       } catch (error) {
         if (cancelled) return;
         setStatus('error');
         setMessage(
-          error?.response?.status === 404 ? 'No encontramos ese título.' : PLAYER_MESSAGES.UNKNOWN
+          error &&
+            typeof error === 'object' &&
+            'response' in error &&
+            (error as { response?: { status?: number } }).response?.status === 404
+            ? 'No encontramos ese título.'
+            : PLAYER_MESSAGES.UNKNOWN
         );
       }
     })();
@@ -90,9 +99,14 @@ export default function Watch() {
 
   // Leaving the page ends the session: a stream nobody is watching is a
   // concurrent-stream slot somebody else cannot use.
-  useEffect(() => () => stop(), [stop]);
+  useEffect(
+    () => () => {
+      void stop();
+    },
+    [stop]
+  );
 
-  const attachPlayer = (streamPath) => {
+  const attachPlayer = (streamPath: string) => {
     const video = videoRef.current;
     const token = auth.user?.access_token;
     if (!video) return;
@@ -134,7 +148,7 @@ export default function Watch() {
     const result = await startPlayback({
       profileId,
       // The route may carry a slug; playback wants the id the catalogue uses.
-      contentId: content.content?.id ?? contentId,
+      contentId: content.content?.id ?? contentId ?? '',
     });
 
     if (!result.ok) {
@@ -149,7 +163,7 @@ export default function Watch() {
     heartbeatRef.current = setInterval(() => {
       const video = videoRef.current;
       if (video && sessionRef.current) {
-        heartbeat(sessionRef.current.id, Math.floor(video.currentTime || 0));
+        void heartbeat(sessionRef.current.id, Math.floor(video.currentTime || 0));
       }
     }, 15000);
   };

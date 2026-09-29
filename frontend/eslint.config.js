@@ -3,12 +3,15 @@ import globals from 'globals';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
 
 /**
  * Flat ESLint config (ESLint 9+).
  *
- * Replaces the Fase-0 .eslintrc.json, which ESLint 9 no longer reads
- * (`pnpm lint` failed with "couldn't find eslint.config.js").
+ * Two layers: plain JavaScript for the tooling files (vite, playwright,
+ * eslint itself) and typescript-eslint for the application, which is
+ * TypeScript since Fase 8. `strict` in tsconfig is the type gate; eslint
+ * enforces the style rules.
  */
 export default [
   {
@@ -38,16 +41,40 @@ export default [
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
     },
   },
+  ...tseslint.configs.recommended.map((config) => ({
+    ...config,
+    files: ['**/*.{ts,tsx}'],
+  })),
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      globals: { ...globals.browser },
+    },
+    settings: { react: { version: 'detect' } },
+    plugins: {
+      react,
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...react.configs.recommended.rules,
+      ...react.configs['jsx-runtime'].rules,
+      ...reactHooks.configs.recommended.rules,
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+      'react/prop-types': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    },
+  },
   {
     // Tests and test setup: Node + Vitest globals in scope.
-    files: ['**/*.{test,spec}.{js,jsx}', 'src/test/**'],
+    files: ['**/*.{test,spec}.{js,jsx,ts,tsx}', 'src/test/**'],
     languageOptions: {
       globals: { ...globals.node },
     },
   },
   {
     // Playwright specs run in Node, not in the browser.
-    files: ['tests/**/*.js', 'playwright.config.js', 'vite.config.js'],
+    files: ['tests/**/*.{js,ts}', 'playwright.config.js', 'vite.config.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

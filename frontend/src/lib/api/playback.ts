@@ -1,4 +1,6 @@
+import { AxiosError, AxiosResponse } from 'axios';
 import { apiClient } from './client';
+import type { PlaybackSession } from './types';
 
 /**
  * Playback API calls for the player (Fase 6).
@@ -15,12 +17,27 @@ export const PLAYER_MESSAGES = {
   STREAM_LIMIT: 'Tu plan no permite más reproducciones simultáneas. Cerrá otra y volvé a intentar.',
   UNAVAILABLE: 'No pudimos verificar tu plan en este momento. Probá de nuevo en unos minutos.',
   UNKNOWN: 'No pudimos iniciar la reproducción.',
-};
+} as const;
+
+export type PlaybackFailureCode = keyof typeof PLAYER_MESSAGES;
+
+export interface PlaybackFailure {
+  code: PlaybackFailureCode;
+  message: string;
+}
+
+export type PlaybackResult =
+  { ok: true; session: PlaybackSession } | ({ ok: false } & PlaybackFailure);
+
+interface ApiErrorEnvelope {
+  details?: { code?: string } | null;
+}
 
 /** Maps an axios failure to the message the player shows. */
-export function describePlaybackFailure(error) {
-  const status = error?.response?.status;
-  const code = error?.response?.data?.details?.code;
+export function describePlaybackFailure(error: unknown): PlaybackFailure {
+  const axiosError = error as AxiosError<ApiErrorEnvelope>;
+  const status = axiosError?.response?.status;
+  const code = axiosError?.response?.data?.details?.code;
 
   if (code === 'SUBSCRIPTION_REQUIRED' || status === 402) {
     return { code: 'SUBSCRIPTION_REQUIRED', message: PLAYER_MESSAGES.SUBSCRIPTION_REQUIRED };
@@ -40,15 +57,27 @@ export function describePlaybackFailure(error) {
   return { code: 'UNKNOWN', message: PLAYER_MESSAGES.UNKNOWN };
 }
 
-export async function startPlayback({ profileId, contentId, episodeId = null, device = 'web' }) {
+export interface StartPlaybackRequest {
+  profileId: string;
+  contentId: string;
+  episodeId?: string | null;
+  device?: string;
+}
+
+export async function startPlayback({
+  profileId,
+  contentId,
+  episodeId = null,
+  device = 'web',
+}: StartPlaybackRequest): Promise<PlaybackResult> {
   try {
-    const { data } = await apiClient.post('/playback/sessions', {
+    const response: AxiosResponse<PlaybackSession> = await apiClient.post('/playback/sessions', {
       profileId,
       contentId,
       episodeId,
       device,
     });
-    return { ok: true, session: data };
+    return { ok: true, session: response.data };
   } catch (error) {
     return { ok: false, ...describePlaybackFailure(error) };
   }
@@ -58,7 +87,7 @@ export async function startPlayback({ profileId, contentId, episodeId = null, de
  * Best effort on purpose: a lost heartbeat must not stop the video, and the
  * next one carries the position anyway (playback-service has the same rule).
  */
-export async function heartbeat(sessionId, positionSeconds) {
+export async function heartbeat(sessionId: string, positionSeconds: number): Promise<boolean> {
   try {
     await apiClient.put(`/playback/sessions/${sessionId}/position`, { positionSeconds });
     return true;
@@ -67,7 +96,7 @@ export async function heartbeat(sessionId, positionSeconds) {
   }
 }
 
-export async function endSession(sessionId, positionSeconds) {
+export async function endSession(sessionId: string, positionSeconds: number): Promise<boolean> {
   try {
     await apiClient.post(`/playback/sessions/${sessionId}/end`, { positionSeconds });
     return true;

@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { accessTokenOf, displayNameOf, hasRole, isContentManager, rolesOf } from './session';
+import {
+  accessTokenOf,
+  displayNameOf,
+  hasRole,
+  isContentManager,
+  rolesOf,
+  type IdentityUser,
+} from './session';
 
-const user = (profile, accessToken = 'token', expired = false) => ({
+const user = (
+  profile: IdentityUser['profile'],
+  accessToken: string | null = 'token',
+  expired = false
+): IdentityUser => ({
   access_token: accessToken,
   expired,
   profile,

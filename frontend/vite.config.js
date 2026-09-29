@@ -38,11 +38,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.js'],
+    setupFiles: ['./src/test/setup.ts'],
     css: false,
     // Unit/component tests live next to the source; the Playwright specs under
     // tests/e2e are driven by a different runner and must not be picked up.
-    include: ['src/**/*.{test,spec}.{js,jsx}'],
+    include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}'],
     exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**'],
   },
 });

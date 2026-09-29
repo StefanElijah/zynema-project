@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AxiosResponse } from 'axios';
 
 vi.mock('./client', () => ({
   apiClient: {
@@ -11,9 +12,11 @@ const { apiClient } = await import('./client');
 const { startPlayback, heartbeat, endSession, describePlaybackFailure, PLAYER_MESSAGES } =
   await import('./playback');
 
-const failure = (status, code) => ({
+const failure = (status: number, code?: string) => ({
   response: { status, data: code ? { details: { code } } : {} },
 });
+
+const responseWith = (data: unknown) => ({ data }) as AxiosResponse;
 
 describe('playback client', () => {
   beforeEach(() => {
@@ -21,9 +24,9 @@ describe('playback client', () => {
   });
 
   it('starts a session with the profile, the title and the device', async () => {
-    apiClient.post.mockResolvedValue({
-      data: { id: 'session-1', streamPath: '/api/v1/playback/stream/session-1/master.m3u8' },
-    });
+    vi.mocked(apiClient.post).mockResolvedValue(
+      responseWith({ id: 'session-1', streamPath: '/api/v1/playback/stream/session-1/master.m3u8' })
+    );
 
     const result = await startPlayback({
       profileId: 'profile-1',
@@ -38,11 +41,13 @@ describe('playback client', () => {
       device: 'web',
     });
     expect(result.ok).toBe(true);
-    expect(result.session.streamPath).toContain('/master.m3u8');
+    if (result.ok) {
+      expect(result.session.streamPath).toContain('/master.m3u8');
+    }
   });
 
   it('turns a paywall into a code the UI can act on', async () => {
-    apiClient.post.mockRejectedValue(failure(402, 'SUBSCRIPTION_REQUIRED'));
+    vi.mocked(apiClient.post).mockRejectedValue(failure(402, 'SUBSCRIPTION_REQUIRED'));
 
     const result = await startPlayback({ profileId: 'p', contentId: 'c' });
 
@@ -65,7 +70,7 @@ describe('playback client', () => {
   });
 
   it('never fails the video because a heartbeat failed', async () => {
-    apiClient.put.mockRejectedValue(new Error('offline'));
+    vi.mocked(apiClient.put).mockRejectedValue(new Error('offline'));
 
     await expect(heartbeat('session-1', 42)).resolves.toBe(false);
     expect(apiClient.put).toHaveBeenCalledWith('/playback/sessions/session-1/position', {
@@ -74,7 +79,7 @@ describe('playback client', () => {
   });
 
   it('closes the session with the final position', async () => {
-    apiClient.post.mockResolvedValue({ data: {} });
+    vi.mocked(apiClient.post).mockResolvedValue(responseWith({}));
 
     await expect(endSession('session-1', 120)).resolves.toBe(true);
     expect(apiClient.post).toHaveBeenCalledWith('/playback/sessions/session-1/end', {

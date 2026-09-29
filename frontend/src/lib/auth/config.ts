@@ -10,7 +10,7 @@ const DEFAULT_KEYCLOAK_URL = 'http://localhost:8180';
 const DEFAULT_REALM = 'zynema';
 const DEFAULT_CLIENT_ID = 'zynema-web';
 
-export const CLIENT_ID = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || DEFAULT_CLIENT_ID;
+export const CLIENT_ID: string = import.meta.env.VITE_KEYCLOAK_CLIENT_ID || DEFAULT_CLIENT_ID;
 
 /** Scopes requested at login. `offline_access` is deliberately not requested. */
 export const SCOPE = 'openid profile email';
@@ -21,19 +21,19 @@ export const SCOPE = 'openid profile email';
  * reloading the module.
  */
 export function buildAuthority(
-  baseUrl = import.meta.env.VITE_KEYCLOAK_URL,
-  realm = import.meta.env.VITE_KEYCLOAK_REALM
-) {
+  baseUrl: string | undefined = import.meta.env.VITE_KEYCLOAK_URL,
+  realm: string | undefined = import.meta.env.VITE_KEYCLOAK_REALM
+): string {
   const base = (baseUrl || DEFAULT_KEYCLOAK_URL).replace(/\/+$/, '');
   const realmName = realm || DEFAULT_REALM;
   return `${base}/realms/${realmName}`;
 }
 
 /** Where Keycloak sends the browser back after login/logout. */
-export function buildRedirectUri(origin = window.location.origin) {
+export function buildRedirectUri(origin: string = window.location.origin): string {
   return `${origin.replace(/\/+$/, '')}/callback`;
 }
 
-export function buildPostLogoutRedirectUri(origin = window.location.origin) {
+export function buildPostLogoutRedirectUri(origin: string = window.location.origin): string {
   return origin.replace(/\/+$/, '');
 }
