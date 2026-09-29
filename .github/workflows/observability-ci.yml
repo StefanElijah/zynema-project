@@ -36,7 +36,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Prometheus
-        run: docker run --rm -v "${{ github.workspace }}/infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" prom/prometheus:latest promtool check config /etc/prometheus/prometheus.yml
+        run: >-
+          docker run --rm --entrypoint promtool
+          -v "${{ github.workspace }}/infra/observability:/etc/prometheus:ro"
+          prom/prometheus:latest check config /etc/prometheus/prometheus.yml
+      - name: Validate Prometheus alert rules
+        run: >-
+          docker run --rm --entrypoint promtool
+          -v "${{ github.workspace }}/infra/observability:/etc/prometheus:ro"
+          prom/prometheus:latest check rules /etc/prometheus/prometheus-rules.yml
+      - name: Validate file_sd targets JSON
+        run: |
+          python3 -c "import json; json.load(open('infra/observability/targets/zynema.json'))" && echo "Valid JSON"
+      - name: Validate Alertmanager
+        run: >-
+          docker run --rm --entrypoint amtool
+          -v "${{ github.workspace }}/infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"
+          prom/alertmanager:latest check-config /etc/alertmanager/alertmanager.yml
       - name: Validate Loki
         run: docker run --rm -v "${{ github.workspace }}/infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro" grafana/loki:2.9.8 -config.file=/etc/loki/local-config.yaml -verify-config
       - name: Validate Tempo

@@ -1,0 +1,38 @@
+[
+  {
+    "targets": ["api-gateway:8080"],
+    "labels": { "job": "api-gateway", "namespace": "zynema" }
+  },
+  {
+    "targets": ["auth-service:8082"],
+    "labels": { "job": "auth-service", "namespace": "zynema" }
+  },
+  {
+    "targets": ["bff-service:8086"],
+    "labels": { "job": "bff-service", "namespace": "zynema" }
+  },
+  {
+    "targets": ["catalog-service:8083"],
+    "labels": { "job": "catalog-service", "namespace": "zynema" }
+  },
+  {
+    "targets": ["config-server:8888"],
+    "labels": { "job": "config-server", "namespace": "zynema" }
+  },
+  {
+    "targets": ["notification-service:8087"],
+    "labels": { "job": "notification-service", "namespace": "zynema" }
+  },
+  {
+    "targets": ["payment-service:8084"],
+    "labels": { "job": "payment-service", "namespace": "zynema" }
+  },
+  {
+    "targets": ["playback-service:8085"],
+    "labels": { "job": "playback-service", "namespace": "zynema" }
+  },
+  {
+    "targets": ["user-service:8081"],
+    "labels": { "job": "user-service", "namespace": "zynema" }
+  }
+]

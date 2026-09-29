@@ -1,22 +1,29 @@
+# Alertmanager for the local stack.
+#
+# There is no real on-call in a simulation, so alerts go to MailHog — the same
+# sink notification-service uses. That makes the delivery testable end-to-end:
+# fire an alert, read it at http://localhost:8025.
+#
+# MailHog lives in the `core` profile: with observability up but core down,
+# alerts still evaluate and group (visible in the Alertmanager UI on :9093);
+# only the email delivery fails, which is logged.
+
 global:
   resolve_timeout: 5m
 
 route:
-  receiver: 'default'
+  receiver: 'dev-mail'
+  # One email per problem, not per instance: group by what an operator acts on.
   group_by: ['alertname', 'service']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
 
 receivers:
-  - name: 'default'
-    webhook_configs:
-      - url: 'http://localhost:5001/alerts'
+  - name: 'dev-mail'
+    email_configs:
+      - to: 'dev@zynema.dev'
+        from: 'alerts@zynema.dev'
+        smarthost: 'mailhog:1025'
+        require_tls: false
         send_resolved: true
-
-routes:
-  - match:
-      service: 'zynema'
-    receiver: 'default'
-    group_wait: 10s
-    repeat_interval: 1h

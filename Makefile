@@ -46,9 +46,14 @@ up-storage: env ## Start the storage profile (MinIO + nginx-hls) and create buck
 	@echo "✅ Storage up. MinIO console: http://localhost:9001 | HLS edge: http://localhost:8090"
 
 .PHONY: up-observability
-up-observability: env ## Start the observability profile (Prometheus, Grafana, Loki, Tempo)
+up-observability: env ## Start the observability profile (Prometheus, Grafana, Loki, Tempo, Alertmanager)
 	$(COMPOSE) --profile observability up -d
+	-@$(MAKE) refresh-targets
 	@echo "✅ Observability up. Grafana: http://localhost:3000"
+
+.PHONY: refresh-targets
+refresh-targets: ## Regenerate the Prometheus file_sd targets from Eureka
+	node infra/scripts/eureka-targets.mjs
 
 .PHONY: up-full
 up-full: env ## Start everything (requires 16GB+ RAM)
