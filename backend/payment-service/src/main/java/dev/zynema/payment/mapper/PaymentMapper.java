@@ -18,6 +18,9 @@ public interface PaymentMapper {
 
     List<PlanDto> toPlanDtoList(List<Plan> plans);
 
+    /** The failure is joined in the read service, not mapped from the entity. */
+    @Mapping(target = "notificationFailure", ignore = true)
+    @Mapping(target = "withNotificationFailure", ignore = true)
     SubscriptionDto toDto(Subscription subscription);
 
     List<SubscriptionDto> toSubscriptionDtoList(List<Subscription> subscriptions);

@@ -7,7 +7,7 @@ but useful to understand **why** the code looks the way it does.
 | ------------------------------------------- | ------------------------------------------------------ | ------ |
 | Microservices patterns overview             | [microservices-patterns.md](microservices-patterns.md) | Stub   |
 | Distributed tracing (OTel + Tempo)          | [distributed-tracing.md](distributed-tracing.md)       | Stub   |
-| Saga pattern (choreographed + orchestrated) | [saga-pattern.md](saga-pattern.md)                     | Stub   |
+| Saga pattern (choreographed + orchestrated) | [saga-pattern.md](saga-pattern.md)                     | Ready  |
 | Outbox pattern                              | [outbox-pattern.md](outbox-pattern.md)                 | Stub   |
 | CQRS — practical notes                      | [cqrs.md](cqrs.md)                                     | Stub   |
 | Event Sourcing — practical notes            | [event-sourcing.md](event-sourcing.md)                 | Ready  |

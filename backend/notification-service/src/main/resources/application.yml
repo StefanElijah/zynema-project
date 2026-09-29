@@ -24,6 +24,14 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+  mail:
+    # MailHog in dev: it accepts anything and its API (8025) is where the
+    # end-to-end tests look for the delivered message.
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
   # Security settings (issuer, JWKS, audience) are shared by every service
   # and live in the config repository: see zynema.security.* in
   # infra/config-repo/application.yml. Authorization rules live in SecurityConfig.

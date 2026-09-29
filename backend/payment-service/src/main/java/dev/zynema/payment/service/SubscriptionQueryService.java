@@ -5,9 +5,11 @@ import dev.zynema.payment.domain.Plan;
 import dev.zynema.payment.domain.Subscription;
 import dev.zynema.payment.domain.SubscriptionStatus;
 import dev.zynema.payment.dto.EntitlementsDto;
+import dev.zynema.payment.dto.NotificationFailureDto;
 import dev.zynema.payment.dto.PaymentDto;
 import dev.zynema.payment.dto.SubscriptionDto;
 import dev.zynema.payment.mapper.PaymentMapper;
+import dev.zynema.payment.repository.NotificationFailureRepository;
 import dev.zynema.payment.repository.PaymentRepository;
 import dev.zynema.payment.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +33,7 @@ public class SubscriptionQueryService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
+    private final NotificationFailureRepository notificationFailureRepository;
     private final CurrentAccountService currentAccountService;
     private final PaymentMapper mapper;
 
@@ -38,7 +41,7 @@ public class SubscriptionQueryService {
         UUID userId = currentAccountService.resolveUserId(jwt);
         Subscription subscription = activeSubscription(userId)
             .orElseThrow(() -> new ResourceNotFoundException("Active subscription for account", userId));
-        return mapper.toDto(subscription);
+        return withLatestNotificationFailure(mapper.toDto(subscription));
     }
 
     public List<SubscriptionDto> subscriptionHistory(Jwt jwt) {
@@ -73,5 +76,18 @@ public class SubscriptionQueryService {
 
     private Optional<Subscription> activeSubscription(UUID userId) {
         return subscriptionRepository.findWithPlanByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE);
+    }
+
+    /**
+     * The compensation is a fact about the subscription, so it travels with
+     * it: a client that can see the subscription can see that its welcome
+     * email never arrived (ADR-0007).
+     */
+    private SubscriptionDto withLatestNotificationFailure(SubscriptionDto dto) {
+        return notificationFailureRepository.findFirstBySubscriptionIdOrderByOccurredAtDesc(dto.id())
+            .map(failure -> dto.withNotificationFailure(new NotificationFailureDto(
+                failure.getNotificationId(), failure.getTemplate(), failure.getReason(),
+                failure.getOccurredAt())))
+            .orElse(dto);
     }
 }

@@ -14,6 +14,16 @@ public record SubscriptionDto(
     Instant currentPeriodEnd,
     boolean cancelAtPeriodEnd,
     Instant createdAt,
-    Instant canceledAt
+    Instant canceledAt,
+    /**
+     * The latest permanently-failed notification, if any. Null when every
+     * delivery succeeded — the normal case.
+     */
+    NotificationFailureDto notificationFailure
 ) {
+
+    public SubscriptionDto withNotificationFailure(NotificationFailureDto failure) {
+        return new SubscriptionDto(id, userId, plan, status, currentPeriodStart, currentPeriodEnd,
+            cancelAtPeriodEnd, createdAt, canceledAt, failure);
+    }
 }

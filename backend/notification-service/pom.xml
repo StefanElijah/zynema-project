@@ -79,6 +79,12 @@
             <groupId>dev.zynema</groupId>
             <artifactId>zynema-event-contracts</artifactId>
         </dependency>
+        <!-- JSON Schema serialisers against the Schema Registry (Fase 7):
+             consumes domains and answers with NotificationSent/Failed -->
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-json-schema-serializer</artifactId>
+        </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
@@ -119,6 +125,12 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Real broker + Schema Registry for the consumers -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>kafka</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -391,7 +391,9 @@ services:
       start_period: 60s
 
   mailhog:
-    profiles: ['auth']
+    # core too: the choreographed saga's notification step sends through it,
+    # and notification-service belongs to the core profile.
+    profiles: ['core', 'auth']
     image: mailhog/mailhog:latest
     container_name: zynema-mailhog
     restart: unless-stopped

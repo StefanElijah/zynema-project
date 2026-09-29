@@ -1,5 +1,8 @@
 package dev.zynema.user.service;
 
+import dev.zynema.common.messaging.OutboxRecorder;
+import dev.zynema.events.KafkaTopics;
+import dev.zynema.events.UserEvent;
 import dev.zynema.user.domain.User;
 import dev.zynema.user.dto.UserDto;
 import dev.zynema.user.mapper.UserMapper;
@@ -10,6 +13,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -28,6 +32,7 @@ public class CurrentUserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final OutboxRecorder outbox;
 
     @Transactional
     public UserDto resolve(Jwt jwt) {
@@ -60,7 +65,7 @@ public class CurrentUserService {
             if (existing != null) {
                 log.info("Linking account {} to Keycloak subject {}", existing.getId(), subject);
                 existing.setKeycloakSubject(subject);
-                return userRepository.save(existing);
+                return publishRegistration(userRepository.save(existing));
             }
         }
 
@@ -73,7 +78,18 @@ public class CurrentUserService {
         // Concurrent first requests would both try to insert; the unique
         // constraints (keycloak_subject, email) keep the data correct and the
         // loser of the race gets a conflict the client can retry.
-        return userRepository.save(user);
+        return publishRegistration(userRepository.save(user));
+    }
+
+    /**
+     * The account becoming known is a fact other services act on: the event is
+     * appended in the same transaction as the row (ADR-0026), which makes it
+     * the only place the email is published — commands never carry it.
+     */
+    private User publishRegistration(User user) {
+        outbox.append(KafkaTopics.USER_EVENTS, user.getId().toString(),
+            new UserEvent.UserRegistered(user.getId(), user.getEmail(), user.getDisplayName(), Instant.now()));
+        return user;
     }
 
     private String displayName(Jwt jwt) {

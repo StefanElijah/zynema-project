@@ -171,16 +171,22 @@ re-pin it.
       JSON Schema in the registry (BACKWARD, `TopicRecordNameStrategy`), the
       envelope in headers, and `@RetryableTopic` + dead-letter topic per
       consumer (ADR-0025); `ProcessedEventStore` gives consumers idempotency
-- [x] Producers with the outbox pattern: the shared OutboxRecorder/OutboxRelay (ADR-0026); payment-service records subscription and payment events in the write transaction
-- [ ] Consumers: notification-service sends email (MailHog in dev)
-- [ ] Choreographed saga: subscription created → notification sent (with compensation)
+- [x] Producers with the outbox pattern: the shared OutboxRecorder/OutboxRelay
+      (ADR-0026); payment records subscription and payment events, playback
+      records the session stream, user-service records `UserRegistered` on JIT
+      provisioning — all in the write transaction
+- [x] Consumers: notification-service projects the email from `UserRegistered`,
+      sends the welcome email (MailHog in dev) and is idempotent with
+      `ProcessedEventStore`; exhausted retries are persisted in
+      `notification_dead_letters` (ADR-0028)
+- [x] Choreographed saga: subscription created → welcome email sent; when the
+      email fails permanently, `NotificationFailed` makes payment flag the
+      subscription and expose it without reversing money (ADR-0007, ADR-0028)
 - [ ] Orchestrated saga comparison
-- [x] Outbox pattern in `payment-service`
 - [x] Event sourcing experiment in `playback-service`: `session_events` is the
       append-only (hash-partitioned) log, the state is the fold, snapshots keep
       it short, `playback_sessions` is the synchronous projection and the same
       events leave through the outbox with the same event id (ADR-0027)
-- [ ] `notification-service` consumes and sends email (MailHog in dev)
 
 ## Phase 8 — Frontend complete
 
