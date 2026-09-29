@@ -1,13 +1,26 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import { AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { AXIOS_INSTANCE } from '@zynema/api-contracts';
 import { userManager } from '../auth/userManager';
 
 const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
-export const apiClient = axios.create({
-  baseURL,
-  timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
-});
+/**
+ * The one axios instance of the app.
+ *
+ * It is created inside the contracts package (the generated hooks call it
+ * through the orval mutator) and configured here, where the app's concerns
+ * live: base URL, timeout, the bearer token from the OIDC session, and the
+ * single-renewal dance for a token that expired mid-flight. Hand-written
+ * calls (`playback.ts`) and generated hooks share it, so they share transport
+ * and authentication by construction.
+ *
+ * `apiClient` is the historical name; `AXIOS_INSTANCE` is the same object.
+ */
+export const apiClient = AXIOS_INSTANCE;
+
+apiClient.defaults.baseURL = baseURL;
+apiClient.defaults.timeout = 10000;
+apiClient.defaults.headers.common['Content-Type'] = 'application/json';
 
 /** A request the interceptor may replay once; the flag guards the retry. */
 type RetriableConfig = InternalAxiosRequestConfig & { _retried?: boolean };

@@ -11,9 +11,16 @@
   "scripts": {
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,json,md}\"",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "api:generate": "orval --config ./orval.config.ts",
+    "api:refresh": "node scripts/refresh-openapi.mjs"
   },
   "devDependencies": {
+    "orval": "^8.38.0",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.59.0",
+    "axios": "^1.7.7"
   }
 }

@@ -66,6 +66,15 @@ export default [
     },
   },
   {
+    // shadcn/ui primitives export their cva variants next to the component on
+    // purpose (that is how consumers compose them); fast refresh is fine with
+    // that trade-off in this folder only.
+    files: ['src/components/ui/**/*.{ts,tsx}'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     // Tests and test setup: Node + Vitest globals in scope.
     files: ['**/*.{test,spec}.{js,jsx,ts,tsx}', 'src/test/**'],
     languageOptions: {

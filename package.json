@@ -25,6 +25,8 @@
     "graph": "nx graph",
     "reset": "nx reset",
     "prepare": "husky || true",
+    "api:generate": "pnpm --filter @zynema/api-contracts api:generate",
+    "api:refresh": "pnpm --filter @zynema/api-contracts api:refresh",
     "docker:up": "docker compose --profile core --profile auth up -d",
     "docker:up:full": "docker compose --profile core --profile auth --profile storage --profile observability up -d",
     "docker:down": "docker compose down",

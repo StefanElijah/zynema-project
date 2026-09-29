@@ -83,6 +83,10 @@ playwright/.cache/
 **/.nx/cache
 **/.nx/workspace-data
 **/generated/
+# Exception: the API contracts client is committed on purpose. Its diff is the
+# contract change and the build stays honest on a fresh clone; regenerate it
+# with `pnpm api:generate` instead of editing it by hand.
+!libs/api-contracts/src/generated/
 
 # Local infra state
 .pgdata/
