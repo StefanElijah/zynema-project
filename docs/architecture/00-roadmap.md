@@ -161,7 +161,7 @@ that assumed "MinIO in Docker" had to become "a source-built image, pinned by
 digest, plus our own bucket initialisation" — and the runbook now records how to
 re-pin it.
 
-## Phase 7 — Async messaging (Kafka)
+## Phase 7 — Async messaging (Kafka) ✅
 
 - [x] Topics: `zynema.payment.events`, `zynema.user.events`,
       `zynema.playback.events`, `zynema.notification.events` (one per
@@ -182,7 +182,11 @@ re-pin it.
 - [x] Choreographed saga: subscription created → welcome email sent; when the
       email fails permanently, `NotificationFailed` makes payment flag the
       subscription and expose it without reversing money (ADR-0007, ADR-0028)
-- [ ] Orchestrated saga comparison
+- [x] Orchestrated saga comparison: an explicit state machine in payment drives
+      the same two steps with commands and replies (GrantRole in Keycloak via
+      the Admin API, then SendNotification), compensates a failed role step by
+      canceling the subscription, and the `zynema.saga.mode` switch selects
+      which style drives the flow (ADR-0029)
 - [x] Event sourcing experiment in `playback-service`: `session_events` is the
       append-only (hash-partitioned) log, the state is the fold, snapshots keep
       it short, `playback_sessions` is the synchronous projection and the same

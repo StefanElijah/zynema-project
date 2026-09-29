@@ -63,7 +63,7 @@ class EventSerializationTests {
         assertThat(JSON.readValue(startedJson, PlaybackEvent.class)).isEqualTo(started);
 
         assertThat(JSON.readValue(
-            JSON.writeValueAsString(new UserEvent.RoleGranted(userId, "subscriber", Instant.now())),
+            JSON.writeValueAsString(new UserEvent.RoleGranted(UUID.randomUUID(), userId, "subscriber", Instant.now())),
             UserEvent.class)).isInstanceOf(UserEvent.RoleGranted.class);
 
         assertThat(JSON.readValue(

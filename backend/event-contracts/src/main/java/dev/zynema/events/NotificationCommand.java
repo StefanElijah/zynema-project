@@ -22,6 +22,12 @@ import java.util.UUID;
 public sealed interface NotificationCommand
     permits NotificationCommand.SendNotification {
 
+    /**
+     * Template names are part of the contract: a producer must name one of
+     * these, and the notification service decides how to render it.
+     */
+    String SUBSCRIPTION_WELCOME = "subscription-welcome";
+
     UUID userId();
 
     String template();

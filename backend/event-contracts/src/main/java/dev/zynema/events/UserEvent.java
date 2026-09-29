@@ -43,8 +43,13 @@ public sealed interface UserEvent
     ) implements UserEvent {
     }
 
-    /** The orchestrated saga's positive reply: the role is on the token now. */
+    /**
+     * The orchestrated saga's positive reply: the role is on the token now.
+     * {@code sagaId} echoes the command so the orchestrator can match the reply
+     * to the flow it is driving.
+     */
     record RoleGranted(
+        UUID sagaId,
         UUID userId,
         String role,
         Instant occurredAt
@@ -53,6 +58,7 @@ public sealed interface UserEvent
 
     /** The orchestrated saga's compensation, confirmed. */
     record RoleRevoked(
+        UUID sagaId,
         UUID userId,
         String role,
         String reason,
@@ -62,6 +68,7 @@ public sealed interface UserEvent
 
     /** The identity provider refused; the orchestrator must compensate. */
     record RoleChangeFailed(
+        UUID sagaId,
         UUID userId,
         String role,
         String reason,

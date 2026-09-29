@@ -1,8 +1,10 @@
 package dev.zynema.payment.messaging;
 
 import dev.zynema.common.messaging.EventEnvelopes;
+import dev.zynema.events.EventEnvelope;
 import dev.zynema.events.KafkaTopics;
 import dev.zynema.events.NotificationEvent;
+import dev.zynema.payment.saga.SubscriptionOnboardingOrchestrator;
 import dev.zynema.payment.service.NotificationCompensationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,12 +25,18 @@ import org.springframework.stereotype.Component;
 public class NotificationEventConsumer {
 
     private final NotificationCompensationService compensation;
+    private final SubscriptionOnboardingOrchestrator orchestrator;
 
     @RetryableTopic
     @KafkaListener(topics = KafkaTopics.NOTIFICATION_EVENTS, groupId = "payment-service",
         containerFactory = "notificationEventsListenerContainerFactory")
     public void onNotificationEvent(ConsumerRecord<String, NotificationEvent> record) {
-        compensation.onNotificationFailed(EventEnvelopes.of(record));
+        EventEnvelope<NotificationEvent> envelope = EventEnvelopes.of(record);
+        // Two independent readers of the same reply: the compensation records a
+        // permanent failure for the subscription, and the saga advances. Both
+        // are idempotent on their own.
+        compensation.onNotificationFailed(envelope);
+        orchestrator.onNotificationEvent(envelope);
     }
 
     /**

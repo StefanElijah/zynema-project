@@ -1,5 +1,6 @@
 package dev.zynema.notification.messaging;
 
+import dev.zynema.events.NotificationCommand;
 import dev.zynema.events.PaymentEvent;
 import dev.zynema.events.UserEvent;
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
@@ -40,6 +41,12 @@ public class ListenerConfig {
     public ConcurrentKafkaListenerContainerFactory<Object, Object> paymentEventsListenerContainerFactory(
         ConcurrentKafkaListenerContainerFactoryConfigurer configurer, KafkaProperties properties) {
         return containerFactory(configurer, typedConsumerFactory(properties, PaymentEvent.class.getName()));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<Object, Object> notificationCommandsListenerContainerFactory(
+        ConcurrentKafkaListenerContainerFactoryConfigurer configurer, KafkaProperties properties) {
+        return containerFactory(configurer, typedConsumerFactory(properties, NotificationCommand.class.getName()));
     }
 
     private ConcurrentKafkaListenerContainerFactory<Object, Object> containerFactory(

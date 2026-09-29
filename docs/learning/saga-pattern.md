@@ -26,15 +26,41 @@ carries an id so every consumer can deduplicate.
 
 ## Orchestrated: a coordinator tells each step what to do
 
-For flows whose compensation needs timeouts, retries across several services
-and a place to ask "where is flow X?", the plan is an orchestrator that sends
-**commands** (`SendNotification`) and waits for replies (`NotificationSent` /
-`RoleChangeFailed`). The contracts already exist (`NotificationCommand`, the
-command topics), but the state machine does not; the comparison is the pending
-item in Fase 7.
+The same flow also runs orchestrated (ADR-0029), driven by
+`SubscriptionOnboardingOrchestrator` in payment-service:
 
-Rule of thumb: choreographed for one or two hops with local reactions;
-orchestrated once you need to see the flow in one place.
+```
+SubscriptionCreated ──► saga row: AWAITING_ROLE
+                             │ GrantRole (user.commands)
+                             ▼
+                        user-service ──► Keycloak Admin API
+                             │ RoleGranted / RoleChangeFailed (user.events)
+                             ▼
+                        saga row: AWAITING_NOTIFICATION
+                             │ SendNotification (notification.commands)
+                             ▼
+                        notification-service ──► email
+                             │ NotificationSent / NotificationFailed
+                             ▼
+                        saga row: COMPLETED / COMPENSATED
+```
+
+What makes it orchestration and not choreography:
+
+- **One state machine owns the flow.** The saga row is the place where "where
+  is subscription X?" is answered; the services only obey commands and reply.
+- **The replies are matched by id**: the command carried the `sagaId` (roles)
+  or the saga minted the `notificationId` (email). No guessing from user ids.
+- **Nothing fails silently.** A role command that exhausts its retries becomes
+  a `RoleChangeFailed` reply from the dead-letter handler, so the orchestrator
+  can compensate instead of waiting forever.
+- **The switch is config**: `zynema.saga.mode=choreographed|orchestrated`
+  decides who acts; both implementations share the contracts, topics, outbox
+  and typed listener factories.
+
+Rule of thumb, after building both: choreographed for one or two hops with
+local reactions; orchestrated once steps can fail silently, need timeouts, or
+someone will ask where a flow is.
 
 ## Compensation is a new fact, not an undo
 

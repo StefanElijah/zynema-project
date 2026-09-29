@@ -38,6 +38,12 @@ eureka:
 # browser uses. JWKS may live at a different, internal URL (ADR-0015).
 # Both fall back to the local Keycloak when these are not set.
 zynema:
+  # Which coordination style drives the subscription onboarding (ADR-0007):
+  # `choreographed` reacts to SubscriptionCreated, `orchestrated` runs the
+  # explicit saga in payment-service. Both are implemented; this switch decides
+  # who acts, so the flow is never driven twice (ADR-0029).
+  saga:
+    mode: ${ZYNEMA_SAGA_MODE:choreographed}
   # The outbox relay polls the producer's own table (ADR-0008); the
   # tuning lives here so every producer behaves the same.
   messaging:

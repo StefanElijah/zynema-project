@@ -28,6 +28,9 @@ x-rest-java: &rest-java
     # host-run services use the localhost defaults from the config repo.
     KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
     SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_URL:-http://schema-registry:8081}
+    # Which coordination style drives the onboarding: choreographed or
+    # orchestrated (ADR-0029). Flipping it switches both services at once.
+    ZYNEMA_SAGA_MODE: ${ZYNEMA_SAGA_MODE:-choreographed}
   depends_on:
     eureka-server:
       condition: service_healthy
@@ -262,6 +265,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB_USER}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      # The Admin API inside the network: the realm lives in the keycloak service.
+      ZYNEMA_IDENTITY_ADMIN_URL: http://keycloak:8080
 
   payment-service:
     <<: *rest-java

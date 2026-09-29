@@ -70,11 +70,15 @@ class NotificationFailureTests extends AbstractNotificationIntegrationTest {
             WHERE event_type = 'payment.subscription-created' AND event_id = ?
             """, Long.class, metadata.eventId()));
 
+        // Filtered by this test's notification id: the topic is shared, and a
+        // leftover from another class must not turn a correct flow red.
         await("the compensation in the outbox", () -> 1L == jdbc.queryForObject("""
-            SELECT count(*) FROM outbox WHERE type = 'notification.notification-failed'
-            """, Long.class));
-        assertThat(jdbc.queryForObject(
-            "SELECT count(*) FROM notification_log WHERE status = 'FAILED'", Long.class)).isEqualTo(1);
+            SELECT count(*) FROM outbox
+            WHERE type = 'notification.notification-failed' AND subject = ?
+            """, Long.class, metadata.eventId().toString()));
+        assertThat(jdbc.queryForObject("""
+            SELECT count(*) FROM notification_log WHERE status = 'FAILED' AND notification_id = ?
+            """, Long.class, metadata.eventId())).isEqualTo(1);
 
         relay.publishPending();
         ConsumerRecord<String, NotificationEvent> record = drain(metadata.eventId().toString(), 1).get(0);

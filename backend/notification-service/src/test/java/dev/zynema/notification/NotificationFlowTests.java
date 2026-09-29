@@ -8,8 +8,6 @@ import dev.zynema.events.KafkaTopics;
 import dev.zynema.events.NotificationEvent;
 import dev.zynema.events.PaymentEvent;
 import dev.zynema.events.UserEvent;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -20,7 +18,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -137,38 +134,6 @@ class NotificationFlowTests extends AbstractNotificationIntegrationTest {
         assertThat(jdbc.queryForObject("""
             SELECT count(*) FROM processed_events WHERE handler = 'subscription-welcome-email'
             """, Long.class)).isEqualTo(1);
-    }
-
-    // ───────────────────────────── mail ───────────────────────────────
-
-    /** MailHog answers {@code text/json}, which RestClient will not convert: parse it ourselves. */
-    private Map<String, Object> mailMessages() {
-        String body = RestClient.create().get()
-            .uri(mailhogApiUrl() + "/api/v2/messages")
-            .retrieve()
-            .body(String.class);
-        try {
-            return new ObjectMapper().readValue(body, new TypeReference<Map<String, Object>>() {
-            });
-        } catch (Exception ex) {
-            throw new IllegalStateException("Could not read the MailHog response", ex);
-        }
-    }
-
-    private long mailTotal() {
-        return ((Number) mailMessages().get("total")).longValue();
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> contentOfFirstMessage() {
-        List<Map<String, Object>> items = (List<Map<String, Object>>) mailMessages().get("items");
-        return (Map<String, Object>) items.get(0).get("Content");
-    }
-
-    @SuppressWarnings("unchecked")
-    private List<String> mailHeader(Map<String, Object> content, String name) {
-        Map<String, Object> headers = (Map<String, Object>) content.get("Headers");
-        return (List<String>) headers.get(name);
     }
 
     // ───────────────────────────── kafka ──────────────────────────────

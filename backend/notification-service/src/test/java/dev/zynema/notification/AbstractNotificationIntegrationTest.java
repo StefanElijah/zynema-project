@@ -10,7 +10,10 @@ import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
+import org.springframework.web.client.RestClient;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -100,9 +103,21 @@ public abstract class AbstractNotificationIntegrationTest {
         registry.add("spring.kafka.consumer.properties.schema.registry.url", () -> registryUrl);
     }
 
-    /** Truncates what this service owns, so streams do not leak between tests. */
+    /**
+     * Truncates what this service owns and empties the mailbox, so counts are
+     * per-test instead of per-JVM: MailHog is shared by every class.
+     */
     protected void resetNotificationState() {
         jdbc.execute("TRUNCATE contacts, notification_log, notification_dead_letters, processed_events, outbox");
+        clearMailbox();
+    }
+
+    protected void clearMailbox() {
+        // The purge lives in MailHog's v1 API; v2 only reads.
+        RestClient.create().delete()
+            .uri(mailhogApiUrl() + "/api/v1/messages")
+            .retrieve()
+            .toBodilessEntity();
     }
 
     protected void await(String description, BooleanSupplier condition) {
@@ -123,5 +138,36 @@ public abstract class AbstractNotificationIntegrationTest {
 
     protected String mailhogApiUrl() {
         return "http://" + MAILHOG.getHost() + ":" + MAILHOG.getMappedPort(8025);
+    }
+
+    /** MailHog answers {@code text/json}, which RestClient will not convert: parse it ourselves. */
+    protected Map<String, Object> mailMessages() {
+        String body = RestClient.create().get()
+            .uri(mailhogApiUrl() + "/api/v2/messages")
+            .retrieve()
+            .body(String.class);
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue(body, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                });
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not read the MailHog response", ex);
+        }
+    }
+
+    protected long mailTotal() {
+        return ((Number) mailMessages().get("total")).longValue();
+    }
+
+    @SuppressWarnings("unchecked")
+    protected Map<String, Object> contentOfFirstMessage() {
+        List<Map<String, Object>> items = (List<Map<String, Object>>) mailMessages().get("items");
+        return (Map<String, Object>) items.get(0).get("Content");
+    }
+
+    @SuppressWarnings("unchecked")
+    protected List<String> mailHeader(Map<String, Object> content, String name) {
+        Map<String, Object> headers = (Map<String, Object>) content.get("Headers");
+        return (List<String>) headers.get(name);
     }
 }

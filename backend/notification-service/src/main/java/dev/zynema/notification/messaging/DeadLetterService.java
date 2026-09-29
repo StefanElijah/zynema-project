@@ -6,6 +6,7 @@ import dev.zynema.common.messaging.EventMetadata;
 import dev.zynema.common.messaging.OutboxRecorder;
 import dev.zynema.events.EventTypes;
 import dev.zynema.events.KafkaTopics;
+import dev.zynema.events.NotificationCommand;
 import dev.zynema.events.NotificationEvent;
 import dev.zynema.events.PaymentEvent;
 import dev.zynema.notification.contact.ContactDirectory;
@@ -41,6 +42,8 @@ public class DeadLetterService {
     private static final String DLT_ERROR_HEADER = "kafka_dlt-exception-message";
     private static final String WELCOME_TRIGGER =
         EventTypes.forPayload("payment", PaymentEvent.SubscriptionCreated.class.getSimpleName());
+    private static final String SEND_NOTIFICATION_COMMAND =
+        EventTypes.forPayload("notification", "SendNotification");
 
     private final JdbcTemplate jdbc;
     private final ObjectMapper objectMapper;
@@ -77,6 +80,9 @@ public class DeadLetterService {
         if (WELCOME_TRIGGER.equals(eventType) && eventId != null) {
             compensate(eventId, record.value(), error);
         }
+        if (SEND_NOTIFICATION_COMMAND.equals(eventType)) {
+            compensateCommand(record.value(), error);
+        }
     }
 
     /**
@@ -99,6 +105,54 @@ public class DeadLetterService {
         outbox.append(KafkaTopics.NOTIFICATION_EVENTS, sourceEventId.toString(),
             new NotificationEvent.NotificationFailed(sourceEventId, userId,
                 NotificationTemplates.SUBSCRIPTION_WELCOME, reason, Instant.now()));
+    }
+
+    /**
+     * A {@code SendNotification} command that died means the orchestrator is
+     * waiting for a reply that will never come; {@code NotificationFailed} with
+     * the notification id the command carried ends the wait, and the failure is
+     * recorded like any other.
+     */
+    private void compensateCommand(Object payload, String reason) {
+        NotificationCommand.SendNotification command = commandOf(payload);
+        if (command == null) {
+            log.warn("Dead-lettered notification command could not be read ({}); no compensation emitted",
+                payload == null ? "null" : payload.getClass().getName());
+            return;
+        }
+        ContactDirectory.Contact contact = contacts.find(command.userId()).orElse(null);
+        notificationLog.failed(command.notificationId(), command.userId(), command.template(),
+            contact == null ? null : contact.email(), reason, null);
+        outbox.append(KafkaTopics.NOTIFICATION_EVENTS, command.notificationId().toString(),
+            new NotificationEvent.NotificationFailed(command.notificationId(), command.userId(),
+                command.template(), reason, Instant.now()));
+    }
+
+    private NotificationCommand.SendNotification commandOf(Object payload) {
+        if (payload instanceof NotificationCommand.SendNotification command) {
+            return command;
+        }
+        if (payload instanceof Map<?, ?> map) {
+            return commandFrom(text(map.get("notificationId")), text(map.get("userId")), text(map.get("template")));
+        }
+        if (payload instanceof JsonNode node) {
+            return commandFrom(node.path("notificationId").asText(null), node.path("userId").asText(null),
+                node.path("template").asText(null));
+        }
+        return null;
+    }
+
+    private NotificationCommand.SendNotification commandFrom(String notificationId, String userId, String template) {
+        try {
+            return new NotificationCommand.SendNotification(UUID.fromString(notificationId),
+                UUID.fromString(userId), template, Map.of());
+        } catch (RuntimeException ex) {
+            return null;
+        }
+    }
+
+    private String text(Object value) {
+        return value instanceof String string ? string : null;
     }
 
     private UUID userIdOf(Object payload) {

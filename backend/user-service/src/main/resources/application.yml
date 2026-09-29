@@ -30,6 +30,16 @@ spring:
   config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 
+# The orchestrated saga's role step needs the Keycloak Admin API: a machine
+# client with manage-users (realm export: zynema-user-service).
+zynema:
+  identity:
+    admin:
+      server-url: ${ZYNEMA_IDENTITY_ADMIN_URL:http://localhost:8180}
+      realm: ${KEYCLOAK_REALM:zynema}
+      client-id: ${ZYNEMA_IDENTITY_ADMIN_CLIENT_ID:zynema-user-service}
+      client-secret: ${ZYNEMA_IDENTITY_ADMIN_CLIENT_SECRET:zynema-user-service-dev-secret}
+
 server:
   port: 8081
   shutdown: graceful

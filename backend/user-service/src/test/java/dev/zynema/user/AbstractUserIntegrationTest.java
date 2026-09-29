@@ -86,6 +86,12 @@ public abstract class AbstractUserIntegrationTest {
         registry.add("spring.kafka.producer.properties.auto.register.schemas", () -> "true");
         registry.add("spring.kafka.producer.properties.value.subject.name.strategy",
             () -> "io.confluent.kafka.serializers.subject.TopicRecordNameStrategy");
+        registry.add("spring.kafka.consumer.key-deserializer",
+            () -> "org.apache.kafka.common.serialization.StringDeserializer");
+        registry.add("spring.kafka.consumer.value-deserializer",
+            () -> "io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer");
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
+        registry.add("spring.kafka.consumer.properties.schema.registry.url", () -> registryUrl);
         // The relay only runs when a test calls it: no scheduler races.
         registry.add("zynema.messaging.outbox.initial-delay", () -> "1h");
     }

@@ -44,3 +44,4 @@ the choice made, and its consequences.
 | 0026 | [The outbox is one shared component, not per-service code](0026-shared-outbox.md)                      | Accepted |
 | 0027 | [Event sourcing for the session aggregate](0027-event-sourcing-in-playback.md)                         | Accepted |
 | 0028 | [Consumers, dead letters and the choreographed compensation](0028-consumers-and-choreographed-saga.md) | Accepted |
+| 0029 | [The orchestrated saga, and when each style earns its keep](0029-orchestrated-saga-comparison.md)      | Accepted |

@@ -1,5 +1,6 @@
 package dev.zynema.notification.notification;
 
+import dev.zynema.events.NotificationCommand;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -16,7 +17,8 @@ import java.util.function.Function;
 @Component
 public class NotificationTemplates {
 
-    public static final String SUBSCRIPTION_WELCOME = "subscription-welcome";
+    /** The name is a contract constant: orchestrators address it by this value. */
+    public static final String SUBSCRIPTION_WELCOME = NotificationCommand.SUBSCRIPTION_WELCOME;
 
     private static final Map<String, Function<Map<String, String>, EmailContent>> TEMPLATES =
         Map.of(SUBSCRIPTION_WELCOME, NotificationTemplates::subscriptionWelcome);

@@ -1,10 +1,22 @@
 package dev.zynema.user.security;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import dev.zynema.common.messaging.EventMetadata;
+import dev.zynema.common.messaging.EventPublisher;
+import dev.zynema.common.messaging.OutboxRelay;
+import dev.zynema.events.KafkaTopics;
+import dev.zynema.events.UserCommand;
+import dev.zynema.events.UserEvent;
 import dev.zynema.user.AbstractUserIntegrationTest;
+import io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -16,7 +28,13 @@ import org.springframework.web.client.RestClient;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.function.BooleanSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
@@ -56,10 +74,24 @@ class KeycloakTokenAuthenticationTests extends AbstractUserIntegrationTest {
         String issuer = authServerUrl() + "/realms/" + REALM;
         registry.add("zynema.security.issuer-uri", () -> issuer);
         registry.add("zynema.security.jwk-set-uri", () -> issuer + "/protocol/openid-connect/certs");
+        // The admin client (orchestrated saga's role step) talks to the same container.
+        registry.add("zynema.identity.admin.server-url", KeycloakTokenAuthenticationTests::authServerUrl);
     }
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private EventPublisher publisher;
+
+    @Autowired
+    private OutboxRelay relay;
+
+    @Value("${spring.kafka.bootstrap-servers}")
+    private String bootstrapServers;
+
+    @Value("${spring.kafka.producer.properties.schema.registry.url}")
+    private String schemaRegistryUrl;
 
     @Test
     @DisplayName("a real token issued by Keycloak authenticates against /me")
@@ -122,7 +154,77 @@ class KeycloakTokenAuthenticationTests extends AbstractUserIntegrationTest {
             .andExpect(jsonPath("$.error", is("Unauthorized")));
     }
 
+    @Test
+    @DisplayName("a GrantRole command grants the realm role and replies with RoleGranted carrying the saga id")
+    void grantRoleCommandGrantsInKeycloak() {
+        UUID sagaId = UUID.randomUUID();
+        UserCommand.GrantRole command = new UserCommand.GrantRole(
+            sagaId, UUID.fromString(DEMO_USER), "subscriber");
+        publisher.publish(KafkaTopics.USER_COMMANDS, DEMO_USER,
+            EventMetadata.of("payment-service", KafkaTopics.USER_COMMANDS, command, null), command).join();
+
+        await("the reply in the outbox", () -> 1L == jdbc.queryForObject(
+            "SELECT count(*) FROM outbox WHERE type = 'user.role-granted'", Long.class));
+
+        relay.publishPending();
+
+        UserEvent.RoleGranted granted = drain(DEMO_USER).stream()
+            .filter(UserEvent.RoleGranted.class::isInstance)
+            .map(UserEvent.RoleGranted.class::cast)
+            .filter(reply -> reply.sagaId().equals(sagaId))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("RoleGranted was not published"));
+        assertThat(granted.role()).isEqualTo("subscriber");
+        assertThat(granted.userId()).isEqualTo(UUID.fromString(DEMO_USER));
+
+        // The strongest assertion: the next token actually carries the role.
+        String token = accessToken("demo", "demo");
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(token.split("\\.")[1]));
+        assertThat(payload).contains("\"subscriber\"");
+    }
+
     // ────────────────────────────── helpers ────────────────────────────
+
+    private void await(String description, BooleanSupplier condition) {
+        long deadline = System.currentTimeMillis() + 30_000;
+        while (System.currentTimeMillis() < deadline) {
+            if (condition.getAsBoolean()) {
+                return;
+            }
+            try {
+                Thread.sleep(200);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("Interrupted while waiting for " + description, ex);
+            }
+        }
+        throw new AssertionError("Timed out waiting for " + description);
+    }
+
+    private List<UserEvent> drain(String key) {
+        Map<String, Object> props = new HashMap<>();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "user-role-test-" + UUID.randomUUID());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, KafkaJsonSchemaDeserializer.class);
+        props.put("schema.registry.url", schemaRegistryUrl);
+        props.put("json.value.type", UserEvent.class.getName());
+
+        List<UserEvent> events = new ArrayList<>();
+        try (KafkaConsumer<String, UserEvent> consumer = new KafkaConsumer<>(props)) {
+            consumer.subscribe(List.of(KafkaTopics.USER_EVENTS));
+            long deadline = System.currentTimeMillis() + Duration.ofSeconds(30).toMillis();
+            while (events.isEmpty() && System.currentTimeMillis() < deadline) {
+                consumer.poll(Duration.ofMillis(500)).forEach(record -> {
+                    if (key.equals(record.key())) {
+                        events.add(record.value());
+                    }
+                });
+            }
+        }
+        return events;
+    }
 
     private String accessToken(String username, String password) {
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
