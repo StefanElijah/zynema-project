@@ -45,3 +45,4 @@ the choice made, and its consequences.
 | 0027 | [Event sourcing for the session aggregate](0027-event-sourcing-in-playback.md)                         | Accepted |
 | 0028 | [Consumers, dead letters and the choreographed compensation](0028-consumers-and-choreographed-saga.md) | Accepted |
 | 0029 | [The orchestrated saga, and when each style earns its keep](0029-orchestrated-saga-comparison.md)      | Accepted |
+| 0030 | [A generated SPA client for the BFF surface](0030-generated-spa-client.md)                             | Accepted |
