@@ -53,6 +53,7 @@ class PlaybackApiTests extends AbstractPlaybackIntegrationTest {
     @BeforeEach
     void reset() {
         sessionRepository.deleteAll();
+        resetEventStore();
         cacheManager.getCacheNames().forEach(name -> Objects.requireNonNull(cacheManager.getCache(name)).clear());
         DEPENDENCIES.resetAll();
         stubUserService();

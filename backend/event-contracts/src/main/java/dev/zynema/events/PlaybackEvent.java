@@ -35,11 +35,23 @@ public sealed interface PlaybackEvent
 
     Instant occurredAt();
 
+    /**
+     * Carries the whole start state, not just the ids: with event sourcing the
+     * session <em>is</em> the fold of its events (ADR-0009, ADR-0027), so the
+     * first event has to be enough to build the aggregate from nothing. The
+     * denormalised title and the device are the fields a resume and the
+     * analytics pipeline need without calling catalog.
+     */
     record SessionStarted(
         UUID sessionId,
         UUID userId,
+        UUID profileId,
         UUID contentId,
+        UUID episodeId,
+        String contentTitle,
+        String device,
         Integer positionSeconds,
+        Integer durationSeconds,
         Instant occurredAt
     ) implements PlaybackEvent {
     }

@@ -42,3 +42,4 @@ the choice made, and its consequences.
 | 0024 | [Signed HLS — manifests through playback, segments through the edge](0024-signed-hls-delivery.md)  | Accepted |
 | 0025 | [Topics by aggregate, schemas per record, metadata in headers](0025-kafka-topics-and-contracts.md) | Accepted |
 | 0026 | [The outbox is one shared component, not per-service code](0026-shared-outbox.md)                  | Accepted |
+| 0027 | [Event sourcing for the session aggregate](0027-event-sourcing-in-playback.md)                     | Accepted |

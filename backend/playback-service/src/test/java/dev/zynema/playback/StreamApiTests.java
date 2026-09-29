@@ -61,6 +61,7 @@ class StreamApiTests extends AbstractPlaybackIntegrationTest {
     @BeforeEach
     void setUp() {
         sessionRepository.deleteAll();
+        resetEventStore();
         DEPENDENCIES.resetAll();
         DEPENDENCIES.stubFor(WireMock.get(WireMock.urlEqualTo("/api/v1/users/me"))
             .willReturn(WireMock.aResponse().withStatus(200)

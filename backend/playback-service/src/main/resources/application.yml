@@ -50,6 +50,12 @@ spring:
 
 zynema:
   playback:
+    events:
+      # The session aggregate is the fold of its event log (ADR-0009): every N
+      # events the folded state is snapshotted, so a load replays a snapshot
+      # plus a short tail instead of the whole stream. Tests lower it to
+      # exercise both paths with a handful of events.
+      snapshot-every: ${PLAYBACK_SNAPSHOT_EVERY:20}
     storage:
       # What this service uses to read manifests.
       endpoint: ${MINIO_ENDPOINT:http://localhost:9000}

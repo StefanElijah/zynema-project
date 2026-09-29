@@ -30,4 +30,13 @@ public class OutboxSerializer {
             throw new IllegalStateException("Could not read an outbox payload of type " + type, ex);
         }
     }
+
+    /** For stored state that is not a registered message, such as a snapshot. */
+    public <T> T read(String json, Class<T> type) {
+        try {
+            return objectMapper.readValue(json, type);
+        } catch (Exception ex) {
+            throw new IllegalStateException("Could not read a stored " + type.getSimpleName(), ex);
+        }
+    }
 }

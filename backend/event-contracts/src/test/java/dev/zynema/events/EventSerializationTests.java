@@ -54,10 +54,13 @@ class EventSerializationTests {
                 subscriptionId, userId, new BigDecimal("9.99"), "USD", "card", Instant.now())),
             PaymentEvent.class)).isInstanceOf(PaymentEvent.PaymentSucceeded.class);
 
-        assertThat(JSON.readValue(
-            JSON.writeValueAsString(new PlaybackEvent.SessionProgressed(
-                UUID.randomUUID(), userId, UUID.randomUUID(), 42, 2400, Instant.now())),
-            PlaybackEvent.class)).isInstanceOf(PlaybackEvent.SessionProgressed.class);
+        // The start event is the one that has to rebuild the aggregate from
+        // nothing, so every field of the empty state travels on the wire.
+        PlaybackEvent.SessionStarted started = new PlaybackEvent.SessionStarted(UUID.randomUUID(), userId,
+            UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "Arcane", "tv", 0, 2400, Instant.now());
+        String startedJson = JSON.writeValueAsString(started);
+        assertThat(startedJson).contains("\"contentTitle\":\"Arcane\"");
+        assertThat(JSON.readValue(startedJson, PlaybackEvent.class)).isEqualTo(started);
 
         assertThat(JSON.readValue(
             JSON.writeValueAsString(new UserEvent.RoleGranted(userId, "subscriber", Instant.now())),

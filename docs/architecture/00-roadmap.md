@@ -175,8 +175,11 @@ re-pin it.
 - [ ] Consumers: notification-service sends email (MailHog in dev)
 - [ ] Choreographed saga: subscription created → notification sent (with compensation)
 - [ ] Orchestrated saga comparison
-- [ ] Outbox pattern in `payment-service`
-- [ ] Event sourcing experiment in `playback-service`
+- [x] Outbox pattern in `payment-service`
+- [x] Event sourcing experiment in `playback-service`: `session_events` is the
+      append-only (hash-partitioned) log, the state is the fold, snapshots keep
+      it short, `playback_sessions` is the synchronous projection and the same
+      events leave through the outbox with the same event id (ADR-0027)
 - [ ] `notification-service` consumes and sends email (MailHog in dev)
 
 ## Phase 8 — Frontend complete

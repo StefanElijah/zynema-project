@@ -53,8 +53,16 @@ public class OutboxRecorder {
      *                and later published
      */
     public UUID append(String topic, String subject, Object payload) {
-        UUID eventId = UUID.randomUUID();
-        Instant occurredAt = Instant.now();
+        return append(topic, subject, UUID.randomUUID(), Instant.now(), payload);
+    }
+
+    /**
+     * The entry point of an event-sourced producer: the event already has an
+     * identity (it is a row in its own log) and a time, and the outbox row must
+     * be the same fact, not a copy with a new id. A consumer that saw the log
+     * entry and the topic message can then match them by {@code eventId}.
+     */
+    public UUID append(String topic, String subject, UUID eventId, Instant occurredAt, Object payload) {
         String type = EventTypes.forPayload(EventTypes.domainOf(topic), payload);
         String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
 
