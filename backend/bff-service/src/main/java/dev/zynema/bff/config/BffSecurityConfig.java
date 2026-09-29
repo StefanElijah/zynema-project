@@ -34,9 +34,11 @@ public class BffSecurityConfig {
             .pathMatchers(ZynemaSecurityPaths.PUBLIC_OPERATIONS).permitAll()
             .pathMatchers(ZynemaSecurityPaths.PUBLIC_API_DOCS).permitAll()
 
-            // The shop window.
+            // The shop window: the landing page, the browse/search screens and
+            // the pricing page all work before signing up.
             .pathMatchers(HttpMethod.GET, "/api/v1/web/home").permitAll()
             .pathMatchers(HttpMethod.GET, "/api/v1/web/catalog/**").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/v1/web/plans").permitAll()
 
             // Everything else: /account, /profiles/**, and any future write.
             .anyExchange().authenticated());

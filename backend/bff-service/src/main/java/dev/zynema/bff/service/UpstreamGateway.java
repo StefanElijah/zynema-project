@@ -1,9 +1,12 @@
 package dev.zynema.bff.service;
 
 import dev.zynema.bff.client.CatalogClient;
+import dev.zynema.bff.client.DownstreamPage;
 import dev.zynema.bff.client.PaymentClient;
+import dev.zynema.bff.client.PlaybackClient;
 import dev.zynema.bff.client.UserClient;
 import dev.zynema.bff.config.BffCacheConfig;
+import dev.zynema.bff.dto.ContentKind;
 import io.github.resilience4j.bulkhead.annotation.Bulkhead;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -27,7 +30,7 @@ import java.util.UUID;
  *       have none. A screen without content or without an account is not a
  *       degraded screen, it is an error — the caller gets a 503 and retries.</li>
  *   <li><b>Optional</b> calls (entitlements, subscription, the rails) fall back
- *       to {@link DownstreamResult#degraded()}, and the view layer reports the
+ *       to {@link DownstreamResult#unavailable()}, and the view layer reports the
  *       missing section. The fallback sits on {@code @Retry}, the outermost
  *       aspect, so transient failures are still retried before giving up.</li>
  * </ul>
@@ -37,6 +40,10 @@ import java.util.UUID;
  * a refused connection is), and the error is translated to the API contract
  * only after the call has definitively given up — see
  * {@link dev.zynema.bff.client.DownstreamErrors}.
+ *
+ * <p>Fase 8 added pass-throughs (catalogue browse/search, profile management,
+ * the session lifecycle, checkout): the SPA talks only to the BFF (ADR-0004),
+ * and these keep the same resilience policy as everything else.
  */
 @Slf4j
 @Service
@@ -46,6 +53,7 @@ public class UpstreamGateway {
     private final CatalogClient catalog;
     private final UserClient user;
     private final PaymentClient payment;
+    private final PlaybackClient playback;
 
     // ───────────────────────────── catalogue ─────────────────────────────
 
@@ -61,6 +69,22 @@ public class UpstreamGateway {
     @Bulkhead(name = "catalog-service")
     public Mono<List<CatalogClient.ContentSummary>> listSeries(String sort, int size) {
         return catalog.listSeries(sort, size);
+    }
+
+    @Retry(name = "catalog-service")
+    @CircuitBreaker(name = "catalog-service")
+    @Bulkhead(name = "catalog-service")
+    public Mono<DownstreamPage<CatalogClient.ContentSummary>> browse(ContentKind type,
+                                                                    CatalogClient.ContentFilter filter,
+                                                                    String sort, int page, int size) {
+        return catalog.browse(type, filter, sort, page, size);
+    }
+
+    @Retry(name = "catalog-service")
+    @CircuitBreaker(name = "catalog-service")
+    @Bulkhead(name = "catalog-service")
+    public Mono<DownstreamPage<CatalogClient.ContentSummary>> search(String query, int page, int size) {
+        return catalog.search(query, page, size);
     }
 
     /**
@@ -84,6 +108,41 @@ public class UpstreamGateway {
     @Bulkhead(name = "user-service")
     public Mono<UserClient.UserAccount> currentUser() {
         return user.me();
+    }
+
+    @Retry(name = "user-service")
+    @CircuitBreaker(name = "user-service")
+    @Bulkhead(name = "user-service")
+    public Mono<List<UserClient.Profile>> profiles() {
+        return user.profiles();
+    }
+
+    @Retry(name = "user-service")
+    @CircuitBreaker(name = "user-service")
+    @Bulkhead(name = "user-service")
+    public Mono<UserClient.Profile> createProfile(String name, String avatarKey, Boolean kids, String language) {
+        return user.createProfile(name, avatarKey, kids, language);
+    }
+
+    @Retry(name = "user-service")
+    @CircuitBreaker(name = "user-service")
+    @Bulkhead(name = "user-service")
+    public Mono<Void> deleteProfile(UUID profileId) {
+        return user.deleteProfile(profileId).then();
+    }
+
+    @Retry(name = "user-service")
+    @CircuitBreaker(name = "user-service")
+    @Bulkhead(name = "user-service")
+    public Mono<UserClient.WatchlistEntry> addToWatchlist(UUID profileId, UUID contentId) {
+        return user.addToWatchlist(profileId, contentId);
+    }
+
+    @Retry(name = "user-service")
+    @CircuitBreaker(name = "user-service")
+    @Bulkhead(name = "user-service")
+    public Mono<Void> removeFromWatchlist(UUID profileId, UUID contentId) {
+        return user.removeFromWatchlist(profileId, contentId).then();
     }
 
     /**
@@ -116,6 +175,21 @@ public class UpstreamGateway {
 
     // ───────────────────────────── payments ──────────────────────────────
 
+    @Retry(name = "payment-service")
+    @CircuitBreaker(name = "payment-service")
+    @Bulkhead(name = "payment-service")
+    public Mono<List<PaymentClient.Plan>> plans() {
+        return payment.plans();
+    }
+
+    @Retry(name = "payment-service")
+    @CircuitBreaker(name = "payment-service")
+    @Bulkhead(name = "payment-service")
+    public Mono<org.springframework.http.ResponseEntity<PaymentClient.Subscription>> subscribe(
+        String idempotencyKey, UUID planId, String paymentMethod) {
+        return payment.subscribe(idempotencyKey, planId, paymentMethod);
+    }
+
     @Retry(name = "payment-service", fallbackMethod = "subscriptionUnavailable")
     @CircuitBreaker(name = "payment-service")
     @Bulkhead(name = "payment-service")
@@ -142,6 +216,36 @@ public class UpstreamGateway {
     Mono<DownstreamResult<PaymentClient.Entitlements>> entitlementsUnavailable(Throwable failure) {
         log.warn("Entitlements unavailable: {}", failure.getMessage());
         return Mono.just(DownstreamResult.unavailable());
+    }
+
+    // ───────────────────────────── playback ──────────────────────────────
+
+    @Retry(name = "playback-service")
+    @CircuitBreaker(name = "playback-service")
+    @Bulkhead(name = "playback-service")
+    public Mono<PlaybackClient.Session> startSession(UUID profileId, UUID contentId, UUID episodeId, String device) {
+        return playback.startSession(profileId, contentId, episodeId, device);
+    }
+
+    @Retry(name = "playback-service")
+    @CircuitBreaker(name = "playback-service")
+    @Bulkhead(name = "playback-service")
+    public Mono<PlaybackClient.Session> heartbeat(UUID sessionId, int positionSeconds) {
+        return playback.heartbeat(sessionId, positionSeconds);
+    }
+
+    @Retry(name = "playback-service")
+    @CircuitBreaker(name = "playback-service")
+    @Bulkhead(name = "playback-service")
+    public Mono<PlaybackClient.Session> endSession(UUID sessionId, int positionSeconds) {
+        return playback.endSession(sessionId, positionSeconds);
+    }
+
+    @Retry(name = "playback-service")
+    @CircuitBreaker(name = "playback-service")
+    @Bulkhead(name = "playback-service")
+    public Mono<List<PlaybackClient.Session>> activeSessions() {
+        return playback.activeSessions();
     }
 
     private static boolean isNotFound(Throwable failure) {

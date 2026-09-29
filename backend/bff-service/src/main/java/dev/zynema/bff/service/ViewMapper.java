@@ -15,12 +15,12 @@ import java.util.Objects;
  * this file stops compiling or a test fails, rather than the frontend silently
  * receiving a null. It is the only place that knows both shapes.
  */
-final class ViewMapper {
+public final class ViewMapper {
 
     private ViewMapper() {
     }
 
-    static TitleCard card(CatalogClient.ContentSummary summary) {
+    public static TitleCard card(CatalogClient.ContentSummary summary) {
         return new TitleCard(
             summary.id(),
             summary.type(),
@@ -34,7 +34,7 @@ final class ViewMapper {
             genres(summary.genres()));
     }
 
-    static TitleCard card(CatalogClient.ContentDetail detail) {
+    public static TitleCard card(CatalogClient.ContentDetail detail) {
         return new TitleCard(
             detail.id(),
             detail.type(),
@@ -48,7 +48,7 @@ final class ViewMapper {
             genres(detail.genres()));
     }
 
-    static List<GenreRef> genres(List<CatalogClient.Genre> genres) {
+    public static List<GenreRef> genres(List<CatalogClient.Genre> genres) {
         return genres == null ? List.of()
             : genres.stream().map(g -> new GenreRef(g.slug(), g.name())).toList();
     }
@@ -57,7 +57,7 @@ final class ViewMapper {
      * Newest first across movies and series: the catalogue has no "recently
      * added" flag, and a rail that mixes both is what the screen wants anyway.
      */
-    static List<TitleCard> newestFirst(List<CatalogClient.ContentSummary> movies,
+    public static List<TitleCard> newestFirst(List<CatalogClient.ContentSummary> movies,
                                        List<CatalogClient.ContentSummary> series,
                                        int limit) {
         return java.util.stream.Stream.concat(movies.stream(), series.stream())

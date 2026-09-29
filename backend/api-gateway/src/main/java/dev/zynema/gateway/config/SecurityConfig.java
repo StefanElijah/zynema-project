@@ -47,6 +47,7 @@ public class SecurityConfig {
             // content still needs a token — and, for playback, a plan.
             .pathMatchers(HttpMethod.GET, "/api/v1/web/home").permitAll()
             .pathMatchers(HttpMethod.GET, "/api/v1/web/catalog/**").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/v1/web/plans").permitAll()
 
             // The pricing page must work before signing up. Conservative on
             // purpose: only GET on the plans collection, nothing else under

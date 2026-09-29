@@ -52,6 +52,54 @@ public class UserClient {
             });
     }
 
+    // ───────────────────── profile management (Fase 8) ──────────────────────
+
+    public Mono<List<Profile>> profiles() {
+        return webClient.get()
+            .uri("/api/v1/users/me/profiles")
+            .retrieve()
+            .bodyToMono(new ParameterizedTypeReference<List<Profile>>() {
+            });
+    }
+
+    public Mono<Profile> createProfile(String name, String avatarKey, Boolean kids, String language) {
+        return webClient.post()
+            .uri("/api/v1/users/me/profiles")
+            .bodyValue(new ProfileCreateBody(name, avatarKey, kids, language))
+            .retrieve()
+            .bodyToMono(Profile.class);
+    }
+
+    public Mono<Void> deleteProfile(UUID profileId) {
+        return webClient.delete()
+            .uri("/api/v1/users/me/profiles/%s".formatted(profileId))
+            .retrieve()
+            .bodyToMono(Void.class);
+    }
+
+    public Mono<WatchlistEntry> addToWatchlist(UUID profileId, UUID contentId) {
+        return webClient.post()
+            .uri("/api/v1/users/me/profiles/%s/watchlist".formatted(profileId))
+            .bodyValue(new WatchlistBody(contentId))
+            .retrieve()
+            .bodyToMono(WatchlistEntry.class);
+    }
+
+    public Mono<Void> removeFromWatchlist(UUID profileId, UUID contentId) {
+        return webClient.delete()
+            .uri("/api/v1/users/me/profiles/%s/watchlist/%s".formatted(profileId, contentId))
+            .retrieve()
+            .bodyToMono(Void.class);
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record ProfileCreateBody(String name, String avatarKey, Boolean kids, String language) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record WatchlistBody(UUID contentId) {
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record UserAccount(
         UUID id,

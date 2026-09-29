@@ -80,4 +80,63 @@ final class Stubs {
              "validUntil": "2026-12-01T00:00:00Z"}
             """.formatted(active, maxStreams);
     }
+
+    // ────────────────────── the SPA surface (Fase 8) ───────────────────────
+
+    /** The pricing page: plans with everything the checkout form shows. */
+    static String planList() {
+        return """
+            [{"id": "81000000-0000-4000-8000-000000000001", "code": "basic", "name": "Basic",
+              "description": "One stream, HD", "price": 4.99, "currency": "EUR",
+              "billingPeriod": "MONTHLY", "maxStreams": 1, "maxQuality": "HD"},
+             {"id": "81000000-0000-4000-8000-000000000002", "code": "standard", "name": "Standard",
+              "description": "Two streams, Full HD", "price": 9.99, "currency": "EUR",
+              "billingPeriod": "MONTHLY", "maxStreams": 2, "maxQuality": "FHD"}]
+            """;
+    }
+
+    /** What payment answers after a subscription is created. */
+    static String subscriptionCreated() {
+        return """
+            {"id": "81000000-0000-4000-8000-000000000009",
+             "plan": {"id": "81000000-0000-4000-8000-000000000002", "code": "standard", "name": "Standard",
+                      "description": "Two streams, Full HD", "price": 9.99, "currency": "EUR",
+                      "billingPeriod": "MONTHLY", "maxStreams": 2, "maxQuality": "FHD"},
+             "status": "ACTIVE", "currentPeriodEnd": "2026-12-01T00:00:00Z", "cancelAtPeriodEnd": false}
+            """;
+    }
+
+    static String profile(String id, String name, boolean kids) {
+        return """
+            {"id": "%s", "name": "%s", "avatarKey": null, "kids": %s, "language": "es"}
+            """.formatted(id, name, kids);
+    }
+
+    static String profiles(String... profiles) {
+        return "[" + String.join(",", profiles) + "]";
+    }
+
+    static String watchlistEntry(String contentId) {
+        return """
+            {"id": "74000000-0000-4000-8000-000000000001", "contentId": "%s",
+             "addedAt": "2026-09-02T00:00:00Z"}
+            """.formatted(contentId);
+    }
+
+    /** A playback session, shaped exactly as playback-service returns it. */
+    static String session(String id, String status, int positionSeconds, String streamPath) {
+        return """
+            {"id": "%s", "profileId": "%s", "contentId": "%s", "episodeId": null,
+             "contentTitle": "Arcane", "status": "%s", "positionSeconds": %d, "durationSeconds": 2400,
+             "device": "web", "streamPath": "%s", "startedAt": "2026-09-03T00:00:00Z"}
+            """.formatted(id, AbstractBffIntegrationTest.DEMO_PROFILE,
+            AbstractBffIntegrationTest.ARCANE, status, positionSeconds, streamPath);
+    }
+
+    /** The platform's error envelope, as every service writes it. */
+    static String error(int status, String error, String message) {
+        return """
+            {"status": %d, "error": "%s", "message": "%s"}
+            """.formatted(status, error, message);
+    }
 }

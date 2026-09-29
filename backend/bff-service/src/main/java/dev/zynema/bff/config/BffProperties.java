@@ -14,7 +14,7 @@ import java.time.Duration;
 @ConfigurationProperties(prefix = "zynema.bff")
 public record BffProperties(Clients clients, Http http, Cache cache) {
 
-    public record Clients(String catalog, String user, String payment) {
+    public record Clients(String catalog, String user, String payment, String playback) {
     }
 
     /**

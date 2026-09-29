@@ -35,24 +35,61 @@ public class CatalogClient {
     }
 
     public Mono<List<ContentSummary>> listMovies(String sort, int size) {
-        return list("/api/v1/catalog/movies", sort, size);
+        return page(moviesPath(), filter -> filter, sort, 0, size).map(DownstreamPage::content);
     }
 
     public Mono<List<ContentSummary>> listSeries(String sort, int size) {
-        return list("/api/v1/catalog/series", sort, size);
+        return page(seriesPath(), filter -> filter, sort, 0, size).map(DownstreamPage::content);
     }
 
-    private Mono<List<ContentSummary>> list(String path, String sort, int size) {
+    /**
+     * The browse screen: the caller's filters travel unchanged to the
+     * catalogue, which is the only service that knows how to apply them.
+     */
+    public Mono<DownstreamPage<ContentSummary>> browse(ContentKind type, ContentFilter filter,
+                                                       String sort, int page, int size) {
+        String path = type == ContentKind.MOVIE ? moviesPath() : seriesPath();
+        return page(path, builder -> {
+            if (filter.genre() != null) {
+                builder.queryParam("genre", filter.genre());
+            }
+            if (filter.yearFrom() != null) {
+                builder.queryParam("yearFrom", filter.yearFrom());
+            }
+            if (filter.yearTo() != null) {
+                builder.queryParam("yearTo", filter.yearTo());
+            }
+            if (filter.minRating() != null) {
+                builder.queryParam("minRating", filter.minRating());
+            }
+            return builder;
+        }, sort, page, size);
+    }
+
+    public Mono<DownstreamPage<ContentSummary>> search(String query, int page, int size) {
         return webClient.get()
-            .uri(builder -> builder.path(path)
-                .queryParam("sort", sort)
-                .queryParam("page", 0)
+            .uri(builder -> builder.path("/api/v1/catalog/search")
+                .queryParam("q", query)
+                .queryParam("page", page)
                 .queryParam("size", size)
                 .build())
             .retrieve()
             .bodyToMono(new ParameterizedTypeReference<DownstreamPage<ContentSummary>>() {
-            })
-            .map(DownstreamPage::content);
+            });
+    }
+
+    private Mono<DownstreamPage<ContentSummary>> page(String path,
+                                                      java.util.function.UnaryOperator<org.springframework.web.util.UriBuilder> filters,
+                                                      String sort, int page, int size) {
+        return webClient.get()
+            .uri(builder -> filters.apply(builder.path(path)
+                    .queryParam("sort", sort)
+                    .queryParam("page", page)
+                    .queryParam("size", size))
+                .build())
+            .retrieve()
+            .bodyToMono(new ParameterizedTypeReference<DownstreamPage<ContentSummary>>() {
+            });
     }
 
     /**
@@ -76,6 +113,14 @@ public class CatalogClient {
             .bodyToMono(ContentDetail.class);
     }
 
+    private static String moviesPath() {
+        return "/api/v1/catalog/movies";
+    }
+
+    private static String seriesPath() {
+        return "/api/v1/catalog/series";
+    }
+
     private static boolean isNotFound(Throwable failure) {
         return failure instanceof WebClientResponseException response && response.getStatusCode().value() == 404;
     }
@@ -87,6 +132,10 @@ public class CatalogClient {
         } catch (IllegalArgumentException ex) {
             return false;
         }
+    }
+
+    /** The filters the SPA may pass through to the catalogue. */
+    public record ContentFilter(String genre, Integer yearFrom, Integer yearTo, BigDecimal minRating) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

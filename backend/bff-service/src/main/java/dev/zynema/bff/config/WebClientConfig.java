@@ -68,6 +68,13 @@ public class WebClientConfig {
         return build(builder, properties, properties.clients().payment(), loadBalancerFactory);
     }
 
+    /** The player's session lifecycle stops being composed and becomes a pass-through. */
+    @Bean
+    public WebClient playbackWebClient(WebClient.Builder builder, BffProperties properties,
+                                       ObjectProvider<LoadBalancerClientFactory> loadBalancerFactory) {
+        return build(builder, properties, properties.clients().playback(), loadBalancerFactory);
+    }
+
     private WebClient build(WebClient.Builder builder, BffProperties properties, String baseUrl,
                             ObjectProvider<LoadBalancerClientFactory> loadBalancerFactory) {
         Duration connectTimeout = properties.http().connectTimeout();

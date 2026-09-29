@@ -1,4 +1,4 @@
-﻿spring:
+spring:
   application:
     name: bff-service
   data:
@@ -24,6 +24,7 @@ zynema:
       catalog: ${BFF_CATALOG_URL:lb://catalog-service}
       user: ${BFF_USER_URL:lb://user-service}
       payment: ${BFF_PAYMENT_URL:lb://payment-service}
+      playback: ${BFF_PLAYBACK_URL:lb://playback-service}
     http:
       # One slow dependency must not hold the screen: the BFF composes several
       # calls per request, and the client is the only place with a hard bound.
@@ -50,6 +51,7 @@ resilience4j:
         permittedNumberOfCallsInHalfOpenState: 3
       user-service: *downstream-circuit-breaker
       payment-service: *downstream-circuit-breaker
+      playback-service: *downstream-circuit-breaker
   retry:
     # What is worth retrying (transport errors, 5xx) and what is not (4xx) is
     # decided in ResilienceConfig: class lists in YAML cannot express
@@ -60,6 +62,7 @@ resilience4j:
         waitDuration: 200ms
       user-service: *downstream-retry
       payment-service: *downstream-retry
+      playback-service: *downstream-retry
   bulkhead:
     instances:
       catalog-service: &downstream-bulkhead
@@ -68,6 +71,7 @@ resilience4j:
         maxConcurrentCalls: 20
       user-service: *downstream-bulkhead
       payment-service: *downstream-bulkhead
+      playback-service: *downstream-bulkhead
 
 eureka:
   client:

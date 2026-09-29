@@ -109,7 +109,7 @@ class GatewaySecurityTests {
     }
 
     @Test
-    @DisplayName("the BFF landing page and content metadata are reachable anonymously")
+    @DisplayName("the BFF landing page, browse/search and pricing are reachable anonymously")
     void bffReadsArePublic() {
         client.get().uri("/api/v1/web/home")
             .exchange()
@@ -118,16 +118,36 @@ class GatewaySecurityTests {
         client.get().uri("/api/v1/web/catalog/arcane")
             .exchange()
             .expectStatus().is5xxServerError();
+
+        client.get().uri("/api/v1/web/catalog/search?q=arcane")
+            .exchange()
+            .expectStatus().is5xxServerError();
+
+        client.get().uri("/api/v1/web/plans")
+            .exchange()
+            .expectStatus().is5xxServerError();
     }
 
     @Test
-    @DisplayName("the account view and the profile rails are not reachable anonymously")
+    @DisplayName("the account view, the profile rails and every write are not reachable anonymously")
     void bffPersonalViewsRequireAuthentication() {
         client.get().uri("/api/v1/web/account")
             .exchange()
             .expectStatus().isUnauthorized();
 
         client.get().uri("/api/v1/web/profiles/72000000-0000-4000-8000-000000000001/home")
+            .exchange()
+            .expectStatus().isUnauthorized();
+
+        client.post().uri("/api/v1/web/profiles")
+            .exchange()
+            .expectStatus().isUnauthorized();
+
+        client.post().uri("/api/v1/web/playback/sessions")
+            .exchange()
+            .expectStatus().isUnauthorized();
+
+        client.post().uri("/api/v1/web/subscriptions")
             .exchange()
             .expectStatus().isUnauthorized();
 

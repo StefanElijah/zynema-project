@@ -42,6 +42,7 @@ public abstract class AbstractBffIntegrationTest {
     static final WireMockServer CATALOG = new WireMockServer(options().dynamicPort());
     static final WireMockServer USER = new WireMockServer(options().dynamicPort());
     static final WireMockServer PAYMENT = new WireMockServer(options().dynamicPort());
+    static final WireMockServer PLAYBACK = new WireMockServer(options().dynamicPort());
 
     static final GenericContainer<?> REDIS =
         new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
@@ -50,6 +51,7 @@ public abstract class AbstractBffIntegrationTest {
         CATALOG.start();
         USER.start();
         PAYMENT.start();
+        PLAYBACK.start();
         REDIS.start();
     }
 
@@ -76,6 +78,7 @@ public abstract class AbstractBffIntegrationTest {
         registry.add("zynema.bff.clients.catalog", () -> "http://localhost:" + CATALOG.port());
         registry.add("zynema.bff.clients.user", () -> "http://localhost:" + USER.port());
         registry.add("zynema.bff.clients.payment", () -> "http://localhost:" + PAYMENT.port());
+        registry.add("zynema.bff.clients.playback", () -> "http://localhost:" + PLAYBACK.port());
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
     }
@@ -88,6 +91,7 @@ public abstract class AbstractBffIntegrationTest {
         CATALOG.resetAll();
         USER.resetAll();
         PAYMENT.resetAll();
+        PLAYBACK.resetAll();
         circuitBreakerRegistry.getAllCircuitBreakers().forEach(CircuitBreaker::reset);
         cacheManager.getCacheNames().forEach(name ->
             java.util.Objects.requireNonNull(cacheManager.getCache(name)).clear());
