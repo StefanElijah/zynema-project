@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Zynema Web BFF API",
-    "description": "Aggregated views for the single-page application.\n\nThe SPA talks only to `/api/v1/web/**`. Each endpoint composes the\ndomain services so a screen is one round trip:\n\n- `GET /home` â landing page (public)\n- `GET /catalog/{idOrSlug}` â detail plus playback context (public)\n- `GET /account` â identity, account, subscription\n- `GET /profiles/{profileId}/home` â continue watching and my list\n\nOptional sections that could not be composed are reported in\n`degraded` instead of failing the whole screen.\n",
+    "description": "Aggregated views for the single-page application.\n\nThe SPA talks only to `/api/v1/web/**`. Each endpoint composes the\ndomain services so a screen is one round trip:\n\n- `GET /home` — landing page (public)\n- `GET /catalog/{idOrSlug}` — detail plus playback context (public)\n- `GET /account` — identity, account, subscription\n- `GET /profiles/{profileId}/home` — continue watching and my list\n\nOptional sections that could not be composed are reported in\n`degraded` instead of failing the whole screen.\n",
     "contact": {
       "name": "Zynema"
     },
@@ -74,6 +74,7 @@
           {
             "name": "Idempotency-Key",
             "in": "header",
+            "description": "Client-generated key that makes the retry safe: the same key returns the original answer",
             "required": true,
             "schema": {
               "type": "string"
@@ -156,7 +157,7 @@
     "/api/v1/web/profiles/{profileId}/watchlist": {
       "post": {
         "tags": ["Web BFF"],
-        "summary": "Add a title to the profile\u0027s list",
+        "summary": "Add a title to the profile's list",
         "operationId": "addToWatchlist",
         "parameters": [
           {
@@ -197,7 +198,7 @@
       "post": {
         "tags": ["Web BFF"],
         "summary": "Start (or resume) a playback session",
-        "description": "402 when the account has no active plan, 422 when the plan\u0027s stream limit is reached",
+        "description": "402 when the account has no active plan, 422 when the plan's stream limit is reached",
         "operationId": "start",
         "requestBody": {
           "content": {
@@ -359,7 +360,7 @@
     "/api/v1/web/catalog": {
       "get": {
         "tags": ["Web BFF"],
-        "summary": "Browse the catalogue with the caller\u0027s filters",
+        "summary": "Browse the catalogue with the caller's filters",
         "operationId": "browse",
         "parameters": [
           {
@@ -452,7 +453,7 @@
     "/api/v1/web/catalog/{idOrSlug}": {
       "get": {
         "tags": ["Web BFF"],
-        "summary": "Content detail plus the caller\u0027s playback context, when there is one",
+        "summary": "Content detail plus the caller's playback context, when there is one",
         "operationId": "content",
         "parameters": [
           {
@@ -581,7 +582,7 @@
     "/api/v1/web/profiles/{profileId}/watchlist/{contentId}": {
       "delete": {
         "tags": ["Web BFF"],
-        "summary": "Remove a title from the profile\u0027s list",
+        "summary": "Remove a title from the profile's list",
         "operationId": "removeFromWatchlist",
         "parameters": [
           {

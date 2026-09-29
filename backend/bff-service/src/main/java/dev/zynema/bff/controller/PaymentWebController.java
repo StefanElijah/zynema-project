@@ -4,6 +4,8 @@ import dev.zynema.bff.client.DownstreamErrors;
 import dev.zynema.bff.client.PaymentClient;
 import dev.zynema.bff.service.UpstreamGateway;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -56,6 +58,8 @@ public class PaymentWebController {
     @PostMapping("/subscriptions")
     @Operation(summary = "Subscribe the account to a plan",
         description = "Requires an Idempotency-Key; 409 when the account already has an active subscription")
+    @Parameter(name = IDEMPOTENCY_KEY, in = ParameterIn.HEADER, required = true,
+        description = "Client-generated key that makes the retry safe: the same key returns the original answer")
     public Mono<ResponseEntity<PaymentClient.Subscription>> subscribe(
         @RequestHeader(IDEMPOTENCY_KEY) String idempotencyKey,
         @Valid @RequestBody SubscribeRequest request) {
