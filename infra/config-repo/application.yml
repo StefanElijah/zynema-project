@@ -38,6 +38,12 @@ eureka:
 # browser uses. JWKS may live at a different, internal URL (ADR-0015).
 # Both fall back to the local Keycloak when these are not set.
 zynema:
+  # The outbox relay polls the producer's own table (ADR-0008); the
+  # tuning lives here so every producer behaves the same.
+  messaging:
+    outbox:
+      poll-interval: 2s
+      batch-size: 100
   security:
     issuer-uri: ${ZYNEMA_SECURITY_ISSUER_URI:http://localhost:8180/realms/zynema}
     jwk-set-uri: ${ZYNEMA_SECURITY_JWK_SET_URI:http://localhost:8180/realms/zynema/protocol/openid-connect/certs}

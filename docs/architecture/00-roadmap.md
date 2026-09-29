@@ -171,7 +171,7 @@ re-pin it.
       JSON Schema in the registry (BACKWARD, `TopicRecordNameStrategy`), the
       envelope in headers, and `@RetryableTopic` + dead-letter topic per
       consumer (ADR-0025); `ProcessedEventStore` gives consumers idempotency
-- [ ] Producers with the outbox pattern
+- [x] Producers with the outbox pattern: the shared OutboxRecorder/OutboxRelay (ADR-0026); payment-service records subscription and payment events in the write transaction
 - [ ] Consumers: notification-service sends email (MailHog in dev)
 - [ ] Choreographed saga: subscription created → notification sent (with compensation)
 - [ ] Orchestrated saga comparison

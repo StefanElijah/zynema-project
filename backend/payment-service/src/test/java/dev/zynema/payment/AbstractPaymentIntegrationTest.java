@@ -112,6 +112,8 @@ public abstract class AbstractPaymentIntegrationTest {
         registry.add("spring.kafka.consumer.properties.schema.registry.url", () -> registryUrl);
         registry.add("spring.kafka.consumer.properties.json.value.type",
             () -> "dev.zynema.events.EventEnvelope");
+        // The relay only runs when a test calls it: no scheduler races.
+        registry.add("zynema.messaging.outbox.initial-delay", () -> "1h");
         registry.add("spring.kafka.retry.topic.attempts", () -> "3");
         registry.add("spring.kafka.retry.topic.max-delay", () -> "1s");
         registry.add("spring.kafka.retry.topic.multiplier", () -> "2");

@@ -2,6 +2,9 @@ package dev.zynema.payment.service;
 
 import dev.zynema.common.exception.ConflictException;
 import dev.zynema.common.exception.ResourceNotFoundException;
+import dev.zynema.common.messaging.OutboxRecorder;
+import dev.zynema.events.KafkaTopics;
+import dev.zynema.events.PaymentEvent;
 import dev.zynema.payment.domain.Payment;
 import dev.zynema.payment.domain.PaymentStatus;
 import dev.zynema.payment.domain.Plan;
@@ -35,6 +38,7 @@ public class SubscriptionService {
     private final PlanRepository planRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
+    private final OutboxRecorder outbox;
 
     @Transactional
     public Subscription createSubscription(UUID userId, UUID planId, String requestedMethod) {
@@ -65,6 +69,15 @@ public class SubscriptionService {
         payment.setPaidAt(now);
         paymentRepository.save(payment);
 
+        // Same transaction as the write: the events exist if and only if the
+        // subscription does. The relay publishes them afterwards (ADR-0008).
+        outbox.append(KafkaTopics.PAYMENT_EVENTS, saved.getId().toString(),
+            new PaymentEvent.SubscriptionCreated(saved.getId(), userId, plan.getId(), plan.getCode(),
+                payment.getAmount(), payment.getCurrency(), now));
+        outbox.append(KafkaTopics.PAYMENT_EVENTS, saved.getId().toString(),
+            new PaymentEvent.PaymentSucceeded(saved.getId(), userId, payment.getAmount(),
+                payment.getCurrency(), payment.getMethod(), now));
+
         return saved;
     }
 
@@ -87,7 +100,13 @@ public class SubscriptionService {
 
         subscription.setCancelAtPeriodEnd(true);
         subscription.setCanceledAt(Instant.now());
-        return subscriptionRepository.save(subscription);
+        Subscription saved = subscriptionRepository.save(subscription);
+
+        outbox.append(KafkaTopics.PAYMENT_EVENTS, saved.getId().toString(),
+            new PaymentEvent.SubscriptionCancelled(saved.getId(), userId, "cancel at period end",
+                saved.getCanceledAt()));
+
+        return saved;
     }
 
     private Instant periodEnd(Instant start, Plan plan) {

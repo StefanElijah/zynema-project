@@ -68,7 +68,7 @@ class KafkaMessagingTests extends AbstractPaymentIntegrationTest {
             .publish(KafkaTopics.PAYMENT_EVENTS, subscriptionId.toString(), event)
             .join());
 
-        List<ConsumerRecord<String, PaymentEvent>> records = drain(KafkaTopics.PAYMENT_EVENTS, sent.size());
+        List<ConsumerRecord<String, PaymentEvent>> records = drain(subscriptionId.toString(), sent.size());
 
         assertThat(records).hasSize(sent.size());
         assertThat(records).extracting(ConsumerRecord::value)
@@ -113,7 +113,7 @@ class KafkaMessagingTests extends AbstractPaymentIntegrationTest {
      * interface is the declared type, and Jackson resolves the concrete event
      * from the payload's {@code eventType} discriminator.
      */
-    private List<ConsumerRecord<String, PaymentEvent>> drain(String topic, int expected) {
+    private List<ConsumerRecord<String, PaymentEvent>> drain(String key, int expected) {
         Map<String, Object> props = new java.util.HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "test-" + UUID.randomUUID());
@@ -125,10 +125,15 @@ class KafkaMessagingTests extends AbstractPaymentIntegrationTest {
 
         List<ConsumerRecord<String, PaymentEvent>> records = new ArrayList<>();
         try (KafkaConsumer<String, PaymentEvent> consumer = new KafkaConsumer<>(props)) {
-            consumer.subscribe(List.of(topic));
+            consumer.subscribe(List.of(KafkaTopics.PAYMENT_EVENTS));
             long deadline = System.currentTimeMillis() + Duration.ofSeconds(30).toMillis();
             while (records.size() < expected && System.currentTimeMillis() < deadline) {
-                consumer.poll(Duration.ofMillis(500)).forEach(records::add);
+                // Filter by key: the topic is shared by every test in the JVM.
+                consumer.poll(Duration.ofMillis(500)).forEach(record -> {
+                    if (key.equals(record.key())) {
+                        records.add(record);
+                    }
+                });
             }
         }
         return records;

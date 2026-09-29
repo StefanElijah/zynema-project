@@ -41,3 +41,4 @@ the choice made, and its consequences.
 | 0023 | [A one-shot FFmpeg worker with object storage as the hand-off](0023-video-pipeline.md)             | Accepted |
 | 0024 | [Signed HLS — manifests through playback, segments through the edge](0024-signed-hls-delivery.md)  | Accepted |
 | 0025 | [Topics by aggregate, schemas per record, metadata in headers](0025-kafka-topics-and-contracts.md) | Accepted |
+| 0026 | [The outbox is one shared component, not per-service code](0026-shared-outbox.md)                  | Accepted |

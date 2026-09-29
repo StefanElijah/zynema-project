@@ -44,7 +44,17 @@ public class EventPublisher {
     }
 
     public CompletableFuture<Void> publish(String topic, String subject, Object payload) {
-        EventMetadata metadata = EventMetadata.of(source, topic, payload, MDC.get(CorrelationIdFilter.MDC_KEY));
+        return publish(topic, subject,
+            EventMetadata.of(source, topic, payload, MDC.get(CorrelationIdFilter.MDC_KEY)), payload);
+    }
+
+    /**
+     * The relay's entry point: the metadata already exists (it is what the
+     * outbox stored) and must not be regenerated — the {@code eventId} is the
+     * consumers' idempotency key, and a republished event that changed it would
+     * be processed twice.
+     */
+    public CompletableFuture<Void> publish(String topic, String subject, EventMetadata metadata, Object payload) {
         ProducerRecord<String, Object> record =
             new ProducerRecord<>(topic, null, subject, payload, metadata.toHeaders());
 
