@@ -316,6 +316,51 @@ The `api-gateway` and `bff-service` simply do not add the `db` file. Remember a
 local `application.yml` cannot override the shared value: config-server
 properties win, which is exactly why the exception lives in the repository.
 
+## **[F7] A host-run service cannot reach Kafka**
+
+Symptom: a service started from the IDE connects to `localhost:9092` and hangs.
+
+Cause: the broker advertises two listeners — `kafka:9092` for containers and
+`localhost:29092` for the host. `9092` is published but advertised for the
+internal network only, so a host client that uses it never gets a usable
+bootstrap address.
+
+Fix: from the host, use `localhost:29092`
+(`KAFKA_BOOTSTRAP_SERVERS=localhost:29092`); containers get `kafka:9092` from
+the compose anchor. The Schema Registry has the same split: in-network
+`schema-registry:8081`, host `localhost:8088`.
+
+## **[F7] Schema Registry rejects a record: "Schema being registered is incompatible"**
+
+The registry enforces BACKWARD compatibility on
+`zynema.<domain>.events-<RecordName>` (ADR-0025). A rejection means the record
+changed in a way old consumers cannot read: a field was removed, renamed or its
+type narrowed.
+
+Fix the contract in `event-contracts` — add the field with a default, or add a
+new event type instead of changing the old one. To see what is registered:
+
+```bash
+curl -s localhost:8088/subjects | jq
+curl -s localhost:8088/subjects/zynema.payment.events-PaymentSucceeded/versions | jq
+```
+
+Emergency escape (dev only, breaks the compatibility promise):
+`curl -X PUT localhost:8088/config -d '{"compatibility":"NONE"}'`.
+
+## **[F7] A consumer receives a map instead of an event**
+
+Every listener must declare the domain it speaks:
+
+```java
+@KafkaListener(topics = KafkaTopics.PAYMENT_EVENTS,
+    properties = "json.value.type=dev.zynema.events.PaymentEvent")
+```
+
+Without it the JSON Schema deserialiser has no target type and yields a map,
+which fails at the first getter. The shared configuration cannot set it: the
+value is the payload, and different topics carry different domains.
+
 ## **[F6] `docker compose up` dies pulling MinIO: "pull access denied"**
 
 Symptom: the storage profile cannot start; pulling `minio/minio` fails with

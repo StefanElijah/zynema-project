@@ -49,7 +49,28 @@
         -->
         <testcontainers.version>1.21.4</testcontainers.version>
         <awssdk.version>2.55.7</awssdk.version>
+        <!--
+          Confluent clients are not on Maven Central, so the repository below
+          exists for them (see ADR-0025). The version tracks the Schema
+          Registry image (confluentinc/cp-schema-registry:7.6.1) so serializer
+          and registry stay in step; it is bumped deliberately.
+        -->
+        <confluent.version>7.6.1</confluent.version>
     </properties>
+
+    <repositories>
+        <!-- Kafka Schema Registry clients (JSON Schema serialisers) -->
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <modules>
         <module>common</module>
@@ -97,6 +118,14 @@
                 <version>${awssdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+
+            <!-- Kafka messaging (stage 7): common declares the support, each
+                 messaging service opts in by adding the serializer. -->
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-json-schema-serializer</artifactId>
+                <version>${confluent.version}</version>
             </dependency>
 
             <!-- Internal modules -->

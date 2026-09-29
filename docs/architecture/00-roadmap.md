@@ -163,8 +163,16 @@ re-pin it.
 
 ## Phase 7 — Async messaging (Kafka)
 
-- [ ] Topics: `playback-events`, `user-events`, `payment-events`, `notification-events`
-- [ ] Producers/consumers with schema contracts and DLQ handling
+- [x] Topics: `zynema.payment.events`, `zynema.user.events`,
+      `zynema.playback.events`, `zynema.notification.events` (one per
+      aggregate, aggregate id as key) plus command topics for the orchestrated
+      saga; created by `kafka-init` in the core profile (ADR-0025)
+- [x] Contracts and serialisation: payload as the message value with its own
+      JSON Schema in the registry (BACKWARD, `TopicRecordNameStrategy`), the
+      envelope in headers, and `@RetryableTopic` + dead-letter topic per
+      consumer (ADR-0025); `ProcessedEventStore` gives consumers idempotency
+- [ ] Producers with the outbox pattern
+- [ ] Consumers: notification-service sends email (MailHog in dev)
 - [ ] Choreographed saga: subscription created → notification sent (with compensation)
 - [ ] Orchestrated saga comparison
 - [ ] Outbox pattern in `payment-service`

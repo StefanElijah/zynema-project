@@ -20,7 +20,13 @@
       (catalog, user, ...) and WebFlux services (bff, api-gateway).
       All web-stack-specific beans are registered conditionally via auto-configuration.
     -->
-    <dependencies>
+    <dependencies>        <!-- Message contracts: the envelope and topic names the messaging
+             support builds on (small, pure, no Spring). -->
+        <dependency>
+            <groupId>dev.zynema</groupId>
+            <artifactId>zynema-event-contracts</artifactId>
+        </dependency>
+
         <!-- Spring web abstractions (WebRequest, ResponseEntity, annotations) -->
         <dependency>
             <groupId>org.springframework</groupId>
@@ -81,6 +87,25 @@
         <dependency>
             <groupId>io.github.resilience4j</groupId>
             <artifactId>resilience4j-circuitbreaker</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- Kafka messaging support (optional). Services that publish or consume
+             events include this plus the JSON Schema serializer, whose class
+             names the shared configuration refers to. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-json-schema-serializer</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- Idempotent consumers dedup through a JDBC store -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
             <optional>true</optional>
         </dependency>
 

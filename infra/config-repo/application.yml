@@ -83,6 +83,44 @@ management:
       endpoint: http://localhost:4318/v1/traces
       protocol: http/protobuf
 
+  # ── Kafka messaging (Fase 7, ADR-0025) ─────────────────────────────────
+  # Only the services that include spring-kafka use these; everyone else
+  # ignores them. Containers override the addresses with the in-network names.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer
+      # acks=all + idempotence: a relay only marks an outbox row published when
+      # the broker confirmed it, and a retry cannot produce a duplicate.
+      acks: all
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8088}
+        auto.register.schemas: true
+        # One subject per record type, not per topic: the four topics carry
+        # several event types each, and each one gets its own schema.
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer
+      auto-offset-reset: earliest
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8088}
+        # Each listener declares its domain as json.value.type (for example
+        # dev.zynema.events.PaymentEvent) through @KafkaListener(properties):
+        # the payload is the message value, and Jackson resolves the concrete
+        # record from its discriminator. A single global value cannot serve
+        # topics that carry different domains.
+    # Retries with backoff, then the dead-letter topic (<topic>-dlt). A message
+    # that keeps failing is a bug or a poison pill, and neither should block
+    # the partition forever.
+    retry:
+      topic:
+        attempts: 4
+        max-delay: 10s
+        multiplier: 2
+
 resilience4j:
   circuitbreaker:
     configs:
