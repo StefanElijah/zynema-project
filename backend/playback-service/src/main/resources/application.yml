@@ -48,6 +48,26 @@ spring:
   config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 
+zynema:
+  playback:
+    storage:
+      # What this service uses to read manifests.
+      endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+      # The host a signature must be valid for: the one nginx presents to
+      # MinIO. Same address inside the compose network; set it explicitly when
+      # the service runs outside it (signture host mismatch = 403).
+      presign-endpoint: ${HLS_PRESIGN_ENDPOINT:}
+      access-key: ${MINIO_ACCESS_KEY:zynema-admin}
+      secret-key: ${MINIO_SECRET_KEY:change-me-in-real-life}
+      hls-bucket: ${MINIO_BUCKET_HLS:zynema-hls}
+      # Where a browser can reach the same object: the nginx edge that fronts
+      # MinIO's API (location /minio/).
+      public-base-url: ${HLS_PUBLIC_BASE_URL:http://localhost:8090/minio}
+      path-style: true
+      # Short on purpose: a segment URL is used right after its playlist is
+      # fetched, and an expired signature is the point of signing at all.
+      segment-ttl: ${HLS_SEGMENT_URL_TTL:60s}
+
 # Per-dependency resilience. Composition: @Retry( @CircuitBreaker( @Bulkhead( call ) ) ).
 resilience4j:
   circuitbreaker:

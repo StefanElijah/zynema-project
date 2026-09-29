@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import ContentCard from '../molecules/ContentCard';
 import '../../styles/content-section.css';
 
@@ -7,12 +8,26 @@ export default function ContentSection({
   containerClass = 'custom-container',
   customMargins = true,
 }) {
-  const handlePlay = (item) => { console.log('play', item.id); };
-  const handleAdd = (item) => { console.log('add', item.id); };
-  const handleLike = (item) => { console.log('like', item.id); };
-  const handleDislike = (item) => { console.log('dislike', item.id); };
-  const handleFavorite = (item) => { console.log('fav', item.id); };
-  const handleDismiss = (item) => { console.log('dismiss', item.id); };
+  const navigate = useNavigate();
+
+  // The catalogue accepts a slug or an id at /watch, so the card can send
+  // whichever it has (Fase 6 wires the player; Fase 8 replaces the mock data).
+  const handlePlay = (item) => navigate(`/watch/${item.id}`);
+  const handleAdd = (item) => {
+    console.log('add', item.id);
+  };
+  const handleLike = (item) => {
+    console.log('like', item.id);
+  };
+  const handleDislike = (item) => {
+    console.log('dislike', item.id);
+  };
+  const handleFavorite = (item) => {
+    console.log('fav', item.id);
+  };
+  const handleDismiss = (item) => {
+    console.log('dismiss', item.id);
+  };
 
   return (
     <section className={`content-section ${customMargins ? 'with-custom-margins' : ''}`}>

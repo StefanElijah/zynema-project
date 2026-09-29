@@ -15,6 +15,12 @@ public record SessionDto(
     Integer positionSeconds,
     Integer durationSeconds,
     String device,
+    /**
+     * Relative path of the master playlist. Relative on purpose: the client
+     * knows its own API base, and the token it must send is the client's, not
+     * the server's.
+     */
+    String streamPath,
     Instant startedAt,
     Instant lastHeartbeatAt,
     Instant endedAt

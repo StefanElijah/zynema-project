@@ -258,6 +258,10 @@ services:
       MINIO_ENDPOINT: ${MINIO_ENDPOINT}
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      # The browser reaches the signed segments through the nginx edge, which
+      # presents the host the signature was computed for (ADR-0024).
+      HLS_PUBLIC_BASE_URL: http://localhost:${NGINX_HLS_PORT:-8090}/minio
+      HLS_SEGMENT_URL_TTL: ${HLS_SEGMENT_URL_TTL:-60s}
 
   auth-service:
     <<: *rest-java

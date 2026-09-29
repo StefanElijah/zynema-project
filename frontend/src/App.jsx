@@ -5,6 +5,7 @@ import RequireAuth from './components/RequireAuth';
 import Home from './pages/Home';
 import Account from './pages/Account';
 import Callback from './pages/Callback';
+import Watch from './pages/Watch';
 
 export default function App() {
   return (
@@ -19,6 +20,16 @@ export default function App() {
             element={
               <RequireAuth>
                 <Account />
+              </RequireAuth>
+            }
+          />
+          {/* Watching needs an account and an active plan; the page shows the
+                paywall, and playback-service enforces it. */}
+          <Route
+            path="/watch/:contentId"
+            element={
+              <RequireAuth>
+                <Watch />
               </RequireAuth>
             }
           />

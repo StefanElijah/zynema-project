@@ -71,7 +71,11 @@ class PlaybackApiTests extends AbstractPlaybackIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.contentTitle", is("Arcane")))
             .andExpect(jsonPath("$.status", is("STARTED")))
-            .andExpect(jsonPath("$.durationSeconds", is(2400)));
+            .andExpect(jsonPath("$.durationSeconds", is(2400)))
+            // The client gets the HLS entry point with the session, so it does
+            // not have to guess the URL shape (ADR-0024).
+            .andExpect(jsonPath("$.streamPath", org.hamcrest.Matchers.matchesPattern(
+                "/api/v1/playback/stream/.+/master\\.m3u8")));
 
         assertThat(sessionRepository.count()).isEqualTo(1);
     }

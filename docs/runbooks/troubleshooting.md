@@ -372,8 +372,23 @@ browser as an nginx URL. Two things break that contract:
 1. **The Host header.** SigV4 signs the host. `infra/nginx/hls.conf` must keep
    `proxy_set_header Host minio:9000;` — with `$host` MinIO would reject a
    perfectly valid signature.
-2. **Clock skew.** MinIO validates `X-Amz-Date` against its own clock; a VM
+2. **The signature's host and the edge's host must be the same.** Inside the
+   compose network both are `minio:9000` and nothing needs configuring. When
+   playback-service runs **outside** Docker while nginx runs inside it, the
+   service signs for `localhost:9000` but the edge presents `minio:9000`:
+   every segment answers 403 `SignatureDoesNotMatch`. Point the presigner at
+   the edge's host:
+   ```bash
+   HLS_PRESIGN_ENDPOINT=http://minio:9000   # offline signing, no DNS needed
+   ```
+3. **Clock skew.** MinIO validates `X-Amz-Date` against its own clock; a VM
    that slept for a day fails every segment until the clock syncs.
+4. **MinIO's error tells you which one it is.** `SignatureDoesNotMatch` is a
+   host/signature problem; `AuthorizationQueryParametersError` with "the
+   Credential is mal-formed" means the query string was re-encoded somewhere
+   (`%2F` became `%252F`) — the signed query must be forwarded verbatim.
+   `Request has expired` means more than `segment-ttl` passed between fetching
+   the playlist and the segment.
 
 Also check that MinIO is only published on `127.0.0.1:9000` (nginx is the
 public path) and that nginx is serving `/minio/` — the browser never talks to

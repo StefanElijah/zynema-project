@@ -133,7 +133,7 @@ family of bug as the missing Config client in Fase 4. When a cross-cutting
 feature "does not seem to apply", check that its infrastructure is present
 before debugging the configuration.
 
-## Phase 6 — Video pipeline
+## Phase 6 — Video pipeline ✅
 
 - [x] FFmpeg HLS multi-bitrate renditions (240p/480p/720p/1080p): one pass, four
       aligned renditions with forced keyframes, in a one-shot `video-worker`
@@ -143,10 +143,23 @@ before debugging the configuration.
       worker also replaces the `mc`-based bucket init
 - [x] Nginx HLS delivery with CORS: the `/minio/` edge proxies MinIO with the
       host the signature was computed for (ADR-0024)
-- [ ] `playback-service` issues time-limited signed URLs
-- [ ] Frontend playback with hls.js
+- [x] `playback-service` issues time-limited signed URLs: manifests rewritten
+      per session (token + ownership) and a 60 s presigned URL per segment,
+      with `409 CONTENT_NOT_READY` when the pipeline has not rendered a title
+      (ADR-0024)
+- [x] Frontend playback with hls.js: `/watch/:contentId` reads the title and the
+      account from the BFF, starts a session on a click, heartbeats every 15 s
+      and ends the session on the way out; every failure code has its own
+      message (paywall, stream limit, not ready)
 - [x] Creative-Commons test videos: `make fetch-samples` imports Blender open
       movie clips (with a synthetic fallback for offline work)
+
+**Lesson worth keeping:** the infrastructure around a feature ages faster than
+the code. MinIO's community images disappeared from their registries during this
+phase and the official image now refuses to serve without a licence, so a plan
+that assumed "MinIO in Docker" had to become "a source-built image, pinned by
+digest, plus our own bucket initialisation" — and the runbook now records how to
+re-pin it.
 
 ## Phase 7 — Async messaging (Kafka)
 

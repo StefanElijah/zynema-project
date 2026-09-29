@@ -249,20 +249,43 @@ you a working IdP plus three users.
 
 **Authorization matrix**
 
-| Endpoint                                                      | Rule                                    |
-| ------------------------------------------------------------- | --------------------------------------- |
-| `GET /api/v1/catalog/**`                                      | anonymous                               |
-| `/api/v1/catalog/admin/**`                                    | role `content-manager` or `admin`       |
-| `/api/v1/auth/public/**`                                      | anonymous                               |
-| `/api/v1/auth/me`                                             | authenticated                           |
-| `/api/v1/users/me`, `/api/v1/users/me/**`                     | authenticated (identity from the token) |
-| `/api/v1/users/**` (id-addressed)                             | role `admin`                            |
-| `/api/v1/web/home`, `/api/v1/web/catalog/**` (BFF reads)      | public                                  |
-| `/api/v1/web/account`, `/api/v1/web/profiles/**` (BFF)        | authenticated                           |
-| `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**` | anonymous                               |
+| Endpoint                                                      | Rule                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `GET /api/v1/catalog/**`                                      | anonymous                                                           |
+| `/api/v1/catalog/admin/**`                                    | role `content-manager` or `admin`                                   |
+| `/api/v1/auth/public/**`                                      | anonymous                                                           |
+| `/api/v1/auth/me`                                             | authenticated                                                       |
+| `/api/v1/users/me`, `/api/v1/users/me/**`                     | authenticated (identity from the token)                             |
+| `/api/v1/users/**` (id-addressed)                             | role `admin`                                                        |
+| `/api/v1/web/home`, `/api/v1/web/catalog/**` (BFF reads)      | public                                                              |
+| `/api/v1/web/account`, `/api/v1/web/profiles/**` (BFF)        | authenticated                                                       |
+| `GET /api/v1/playback/stream/**` (HLS manifests)              | authenticated + session ownership                                   |
+| `/api/v1/playback/**`                                         | authenticated; watching also needs an active plan (`402` otherwise) |
+| `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**` | anonymous                                                           |
 
 Errors use the same `ApiError` envelope as the rest of the API: a missing token
-is `401`, a valid token without the required role is `403`.
+is `401`, a valid token without the required role is `403`, and a signed-in
+account without an active plan gets `402` when it tries to watch something.
+
+**Watching a title (Fase 6)**
+
+```bash
+# 1. Put videos in the source bucket (Creative-Commons clips, or synthetic ones)
+make up-storage fetch-samples
+
+# 2. Transcode the demo movie and one Arcane episode into HLS
+make transcode
+
+# 3. From the app: /watch/dune-part-two (the player starts a session and plays)
+#    By hand: start a session, then follow its streamPath
+curl -X POST localhost:8080/api/v1/playback/sessions \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"profileId":"<profile-id>","contentId":"<content-id>","device":"curl"}'
+```
+
+Segments are presigned for 60 seconds and served by the nginx edge
+(`http://localhost:8090/minio/...`); manifests require the token and session
+ownership (ADR-0024).
 
 ### Getting a token for manual testing
 

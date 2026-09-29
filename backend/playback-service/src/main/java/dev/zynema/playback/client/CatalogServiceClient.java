@@ -19,7 +19,16 @@ public interface CatalogServiceClient {
     @GetMapping("/contents/{id}")
     ContentSummary currentContent(@PathVariable("id") UUID id);
 
-    /** Consumer-side slice: only the fields playback uses. */
-    record ContentSummary(UUID id, String title, String type, Integer runtimeMinutes) {
+    /**
+     * The episode's HLS path. Playback stores the episode id on the session and
+     * the catalogue is the only place that knows where its video lives.
+     */
+    @GetMapping("/episodes/{id}")
+    EpisodeSource episode(@PathVariable("id") UUID id);
+
+    record ContentSummary(UUID id, String title, String type, Integer runtimeMinutes, String hlsPath) {
+    }
+
+    record EpisodeSource(UUID id, String hlsPath) {
     }
 }
