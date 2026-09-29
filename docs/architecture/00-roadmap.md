@@ -192,7 +192,7 @@ re-pin it.
       it short, `playback_sessions` is the synchronous projection and the same
       events leave through the outbox with the same event id (ADR-0027)
 
-## Phase 8 — Frontend complete
+## Phase 8 — Frontend complete ✅
 
 - [x] The BFF is the SPA's only surface: browse, search, pricing, checkout,
       profile management, watchlist and the session lifecycle live behind
@@ -211,7 +211,9 @@ re-pin it.
       over the existing Tailwind v4 theme, plus the `cn` utility
 - [x] Playwright E2E: home (hero, rails, failure + retry), catalog, search,
       detail call-to-action and pricing, all against stubbed BFF responses
-- [ ] React Hook Form + Zod forms (the profile form is still plain state)
+- [x] React Hook Form + Zod forms: the create-profile form validates against
+      the API's own limits before the round trip (schema unit-tested, form
+      component-tested)
 
 **Lesson worth keeping:** a generated client can only send what the spec
 documents. Checkout worked for hand-written calls because they set the

@@ -1,5 +1,6 @@
-import { FormEvent, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from 'react-oidc-context';
 import {
@@ -10,6 +11,7 @@ import {
   useDeleteProfile,
 } from '@lib/api';
 import { displayNameOf } from '../lib/auth/session';
+import { profileFormSchema, type ProfileFormValues } from '../lib/validation/profile';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Skeleton } from '../components/ui/skeleton';
@@ -35,8 +37,15 @@ export default function Account() {
   const queryClient = useQueryClient();
   const { data, isLoading, isError, refetch } = useAccount();
 
-  const [name, setName] = useState('');
-  const [kids, setKids] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: { name: '', kids: false, language: 'es' },
+  });
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: getProfilesQueryKey() });
@@ -46,19 +55,9 @@ export default function Account() {
   const createProfile = useCreateProfile({ mutation: { onSuccess: invalidate } });
   const deleteProfile = useDeleteProfile({ mutation: { onSuccess: invalidate } });
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!name.trim()) return;
-    createProfile.mutate(
-      { data: { name: name.trim(), kids, language: 'es' } },
-      {
-        onSuccess: () => {
-          setName('');
-          setKids(false);
-        },
-      }
-    );
-  };
+  const submit = handleSubmit((values) => {
+    createProfile.mutate({ data: values }, { onSuccess: () => reset() });
+  });
 
   if (isLoading) {
     return (
@@ -168,26 +167,23 @@ export default function Account() {
           <label className="flex-1 text-sm text-white/70">
             Nuevo perfil
             <Input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
               placeholder="Nombre"
               maxLength={80}
+              aria-invalid={Boolean(errors.name)}
               className="mt-1"
+              {...register('name')}
             />
           </label>
           <label className="flex items-center gap-2 pb-2 text-sm text-white/70">
-            <input
-              type="checkbox"
-              checked={kids}
-              onChange={(event) => setKids(event.target.checked)}
-              className="accent-red-600"
-            />
+            <input type="checkbox" className="accent-red-600" {...register('kids')} />
             Infantil
           </label>
-          <Button type="submit" disabled={createProfile.isPending || !name.trim()}>
+          <Button type="submit" disabled={createProfile.isPending}>
             {createProfile.isPending ? 'Creando…' : 'Crear'}
           </Button>
         </form>
+
+        {errors.name && <p className="mt-3 text-sm text-red-400">{errors.name.message}</p>}
 
         {createProfile.error && (
           <p className="mt-3 text-sm text-amber-300">
