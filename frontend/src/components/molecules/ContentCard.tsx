@@ -20,20 +20,20 @@ import {
   FaClock,
   FaVideo,
 } from 'react-icons/fa';
-import type { ContentItem } from '../../data/types';
+import type { TitleCard } from '@lib/api';
 import '../../styles/content-card.css';
 
 const FALLBACK_IMG =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMTExIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iI2ZmZiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbiBubyBkaXNwb25pYmxlPC90ZXh0Pjwvc3ZnPg==';
 
 interface ContentCardProps {
-  item: ContentItem | null;
-  onPlay?: (item: ContentItem) => void;
-  onAdd?: (item: ContentItem) => void;
-  onLike?: (item: ContentItem) => void;
-  onDislike?: (item: ContentItem) => void;
-  onFavorite?: (item: ContentItem) => void;
-  onDismiss?: (item: ContentItem) => void;
+  item: TitleCard | null;
+  onPlay?: (item: TitleCard) => void;
+  onAdd?: (item: TitleCard) => void;
+  onLike?: (item: TitleCard) => void;
+  onDislike?: (item: TitleCard) => void;
+  onFavorite?: (item: TitleCard) => void;
+  onDismiss?: (item: TitleCard) => void;
   variant?: string;
   hoverDelay?: number;
 }
@@ -94,22 +94,23 @@ export default function ContentCard({
 
   if (!item) return null;
 
-  const {
-    title,
-    genres = [],
-    image,
-    duration,
-    seasons,
-    ageRating,
-    description,
-    rating,
-    year,
-    cast = [],
-    directors = [],
-  } = item;
+  // The BFF's TitleCard is the card's data source. The layout survives fields
+  // the card used to get from the mock catalogue (seasons, synopsis, cast):
+  // without them those lines simply do not render.
+  const { title } = item;
+  const genres = (item.genres ?? []).map((genre) => genre.name ?? '').filter(Boolean);
+  const image = item.posterUrl ?? item.backdropUrl ?? FALLBACK_IMG;
+  const duration = undefined as number | undefined;
+  const seasons = undefined as number | undefined;
+  const ageRating = item.maturityRating;
+  const description = undefined as string | undefined;
+  const rating = item.averageRating;
+  const year = item.releaseYear;
+  const cast: string[] = [];
+  const directors: string[] = [];
 
   const handleKeyAction =
-    (fn?: (item: ContentItem) => void) => (event: ReactMouseEvent | ReactKeyboardEvent) => {
+    (fn?: (item: TitleCard) => void) => (event: ReactMouseEvent | ReactKeyboardEvent) => {
       const isActivationKey = 'key' in event && (event.key === 'Enter' || event.key === ' ');
       if (event.type === 'click' || isActivationKey) {
         event.preventDefault();

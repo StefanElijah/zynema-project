@@ -7,10 +7,10 @@
  * The SPA talks only to `/api/v1/web/**`. Each endpoint composes the
  * domain services so a screen is one round trip:
  *
- * - `GET /home` â landing page (public)
- * - `GET /catalog/{idOrSlug}` â detail plus playback context (public)
- * - `GET /account` â identity, account, subscription
- * - `GET /profiles/{profileId}/home` â continue watching and my list
+ * - `GET /home` — landing page (public)
+ * - `GET /catalog/{idOrSlug}` — detail plus playback context (public)
+ * - `GET /account` — identity, account, subscription
+ * - `GET /profiles/{profileId}/home` — continue watching and my list
  *
  * Optional sections that could not be composed are reported in
  * `degraded` instead of failing the whole screen.

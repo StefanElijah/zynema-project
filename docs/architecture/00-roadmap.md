@@ -194,14 +194,31 @@ re-pin it.
 
 ## Phase 8 — Frontend complete
 
-- [ ] TypeScript client generated from the BFF OpenAPI spec
-- [ ] TanStack Query + Zustand wired to the BFF
-- [ ] Pages: home, catalog, detail, player, profiles, search, my list, settings
-- [ ] Keycloak login/refresh/logout
-- [ ] hls.js player with custom controls
-- [ ] React Hook Form + Zod forms
-- [ ] shadcn/ui component layer
-- [ ] Playwright E2E
+- [x] The BFF is the SPA's only surface: browse, search, pricing, checkout,
+      profile management, watchlist and the session lifecycle live behind
+      `/api/v1/web/**` (ADR-0004), with the README-documented codegen loop
+- [x] TypeScript client generated from the BFF OpenAPI spec (`orval`): one
+      committed snapshot, deterministic offline generation, typed React Query
+      hooks over the axios instance that carries the token and the 401 renewal
+- [x] TanStack Query + Zustand wired to the BFF: query defaults in one module,
+      persisted `useProfileStore` for "who is watching"
+- [x] Pages: home, catalog (filters in the URL), detail, search, my list,
+      plans/checkout, account (profiles CRUD), player
+- [x] Keycloak login/refresh/logout (PKCE, silent renew, session storage)
+- [x] hls.js player with custom controls: play/seek/volume/fullscreen, resume
+      from the recorded position, heartbeat and session close on the way out
+- [x] shadcn/ui component layer (button, input, avatar, dropdown, skeleton)
+      over the existing Tailwind v4 theme, plus the `cn` utility
+- [x] Playwright E2E: home (hero, rails, failure + retry), catalog, search,
+      detail call-to-action and pricing, all against stubbed BFF responses
+- [ ] React Hook Form + Zod forms (the profile form is still plain state)
+
+**Lesson worth keeping:** a generated client can only send what the spec
+documents. Checkout worked for hand-written calls because they set the
+`Idempotency-Key` header by hand; once the page moved to the generated hooks
+the header disappeared — springdoc does not publish `@RequestHeader` parameters
+unless they are annotated, and no generated code can invent them. The contract
+is the spec, not the controller.
 
 ## Phase 9 — Observability end-to-end
 

@@ -19,6 +19,9 @@ export const customInstance = <T>(
   const promise = AXIOS_INSTANCE({
     ...config,
     ...options,
+    // Per-call options (like a hook's `request`) must add headers, not replace
+    // the ones the operation set.
+    headers: { ...config.headers, ...options?.headers },
     cancelToken: source.token,
   }).then(({ data }) => data);
 

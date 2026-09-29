@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { Check, LogOut, UserRound } from 'lucide-react';
@@ -29,6 +29,7 @@ function initialsOf(name: string): string {
 
 export default function AppNavbar() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { profiles, selected } = useSelectedProfile();
   const select = useProfileStore((state) => state.select);
@@ -53,19 +54,22 @@ export default function AppNavbar() {
           <Link to="/" className="hover:text-white transition">
             Inicio
           </Link>
-          <a href="#series" className="hover:text-white transition">
+          <Link to="/catalog?type=SERIES" className="hover:text-white transition">
             Series
-          </a>
-          <a href="#movies" className="hover:text-white transition">
+          </Link>
+          <Link to="/catalog?type=MOVIE" className="hover:text-white transition">
             Películas
-          </a>
-          <a href="#my-list" className="hover:text-white transition">
+          </Link>
+          <Link to="/my-list" className="hover:text-white transition">
             Mi Lista
-          </a>
+          </Link>
+          <Link to="/plans" className="hover:text-white transition">
+            Planes
+          </Link>
         </nav>
 
         <div className="flex items-center gap-4">
-          <SearchInput />
+          <SearchInput onSearch={(value) => navigate(`/search?q=${encodeURIComponent(value)}`)} />
 
           {auth.isLoading && <Skeleton className="size-9 rounded-full" />}
 

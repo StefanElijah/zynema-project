@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
 import Hls from 'hls.js';
-import { apiClient } from '../lib/api/client';
+import { useContent } from '@lib/api';
+import { useSelectedProfile } from '@hooks/useSelectedProfile';
+import { useProfileStore } from '@stores/useProfileStore';
 import { startPlayback, heartbeat, endSession, PLAYER_MESSAGES } from '../lib/api/playback';
-import type { AccountView, ContentView, PlaybackSession, UserProfile } from '../lib/api/types';
+import PlayerControls from '../components/organisms/PlayerControls';
+import { Button } from '../components/ui/button';
+import { Skeleton } from '../components/ui/skeleton';
 
 const REASON_MESSAGES: Record<string, string> = {
   AUTHENTICATION_REQUIRED: PLAYER_MESSAGES.AUTHENTICATION_REQUIRED,
@@ -12,73 +16,56 @@ const REASON_MESSAGES: Record<string, string> = {
   UNAVAILABLE: PLAYER_MESSAGES.UNAVAILABLE,
 };
 
-type PlayerStatus = 'loading' | 'ready' | 'starting' | 'playing' | 'blocked' | 'error';
+type PlayerStatus = 'ready' | 'starting' | 'playing' | 'blocked' | 'error' | 'loading';
 
 /**
- * The player (Fase 6).
+ * The player.
  *
- * Screen flow: read the title and the account from the BFF (one call each, no
- * orchestration here), then a click starts a playback session and attaches
- * HLS. The click is not decoration: browsers only allow playback from a user
- * gesture.
+ * Read first: the title and the caller's playback context come from the typed
+ * client (`useContent`). The session lifecycle stays in `lib/api/playback.ts`
+ * because it is transport with a failure contract the player branches on
+ * (paywall, not-ready, concurrency, unavailable), and its logic is unit-tested
+ * there.
  *
- * The contract with playback-service: the session carries `streamPath`, hls.js
- * sends the token for the manifests, and the segments are already signed
- * (ADR-0024), so nothing in this component formats a video URL.
+ * The profile is the one selected globally in the navbar — watching as a
+ * different profile must not need a second selection here.
  */
 export default function Watch() {
   const { contentId } = useParams<{ contentId: string }>();
+  const navigate = useNavigate();
   const auth = useAuth();
+  const { profiles, selected } = useSelectedProfile();
+  const selectProfile = useProfileStore((state) => state.select);
 
-  const [content, setContent] = useState<ContentView | null>(null);
-  const [profiles, setProfiles] = useState<UserProfile[]>([]);
-  const [profileId, setProfileId] = useState<string | null>(null);
   const [status, setStatus] = useState<PlayerStatus>('loading');
   const [message, setMessage] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
-  const sessionRef = useRef<PlaybackSession | null>(null);
+  const sessionRef = useRef<{ id: string } | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resumeAtRef = useRef(0);
+
+  const { data, isLoading } = useContent(
+    contentId ?? '',
+    { profileId: selected?.id },
+    { query: { enabled: Boolean(contentId) } }
+  );
+
+  const content = data?.content;
+  const allowed = data?.playback?.allowed === true;
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const [detail, account] = await Promise.all([
-          apiClient.get<ContentView>(`/web/catalog/${contentId}`),
-          apiClient.get<AccountView>('/web/account'),
-        ]);
-        if (cancelled) return;
-
-        setContent(detail.data);
-        setProfiles(account.data.user?.profiles ?? []);
-        setProfileId(account.data.user?.profiles?.[0]?.id ?? null);
-
-        if (detail.data.playback?.allowed) {
-          setStatus('ready');
-        } else {
-          setStatus('blocked');
-          const reason = detail.data.playback?.reason;
-          setMessage((reason && REASON_MESSAGES[reason]) || PLAYER_MESSAGES.UNAVAILABLE);
-        }
-      } catch (error) {
-        if (cancelled) return;
-        setStatus('error');
-        setMessage(
-          error &&
-            typeof error === 'object' &&
-            'response' in error &&
-            (error as { response?: { status?: number } }).response?.status === 404
-            ? 'No encontramos ese título.'
-            : PLAYER_MESSAGES.UNKNOWN
-        );
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [contentId]);
+    if (isLoading) return;
+    if (!allowed) {
+      setStatus('blocked');
+      const reason = data?.playback?.reason;
+      setMessage((reason && REASON_MESSAGES[reason]) || PLAYER_MESSAGES.UNAVAILABLE);
+    } else {
+      setStatus('ready');
+      setMessage(null);
+    }
+  }, [isLoading, allowed, data?.playback?.reason]);
 
   const stop = useCallback(async () => {
     if (heartbeatRef.current) {
@@ -121,9 +108,14 @@ export default function Watch() {
       });
       hls.loadSource(streamPath);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-      hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal) {
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (resumeAtRef.current > 0) {
+          video.currentTime = resumeAtRef.current;
+        }
+        video.play().catch(() => {});
+      });
+      hls.on(Hls.Events.ERROR, (_event, error) => {
+        if (error.fatal) {
           setStatus('error');
           setMessage('La reproducción se detuvo. Volvé a intentar.');
         }
@@ -141,14 +133,14 @@ export default function Watch() {
   };
 
   const play = async () => {
-    if (!profileId || !content) return;
+    if (!selected?.id || !content?.id) return;
     setStatus('starting');
     setMessage(null);
+    resumeAtRef.current = data?.progress?.positionSeconds ?? 0;
 
     const result = await startPlayback({
-      profileId,
-      // The route may carry a slug; playback wants the id the catalogue uses.
-      contentId: content.content?.id ?? contentId ?? '',
+      profileId: selected.id,
+      contentId: content.id,
     });
 
     if (!result.ok) {
@@ -157,8 +149,15 @@ export default function Watch() {
       return;
     }
 
-    sessionRef.current = result.session;
-    attachPlayer(result.session.streamPath);
+    const sessionId = result.session.id;
+    if (!sessionId) {
+      setStatus('error');
+      setMessage(PLAYER_MESSAGES.UNKNOWN);
+      return;
+    }
+
+    sessionRef.current = { id: sessionId };
+    attachPlayer(result.session.streamPath ?? '');
     setStatus('playing');
     heartbeatRef.current = setInterval(() => {
       const video = videoRef.current;
@@ -171,35 +170,38 @@ export default function Watch() {
   // ────────────────────────────── render ────────────────────────────────
 
   if (status === 'loading') {
-    return <div className="py-24 text-center text-white/70">Cargando el título…</div>;
+    return (
+      <div className="custom-container py-16">
+        <Skeleton className="aspect-video w-full max-w-4xl" />
+      </div>
+    );
   }
 
-  const title = content?.content?.title ?? contentId;
-  const subtitle =
-    content?.content?.type === 'SERIES'
-      ? `Serie · ${content?.content?.releaseYear ?? ''}`
-      : `Película · ${content?.content?.releaseYear ?? ''}`;
+  const title = content?.title ?? contentId;
+  const subtitle = content
+    ? `${content.type === 'SERIES' ? 'Serie' : 'Película'} · ${content.releaseYear ?? ''}`
+    : '';
 
   return (
     <div className="custom-container py-10">
-      <Link to="/" className="text-sm text-white/60 hover:text-white">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="text-sm text-white/60 hover:text-white"
+      >
         ← Volver
-      </Link>
+      </button>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div className="overflow-hidden rounded-lg bg-black ring-1 ring-white/10">
-          <video
-            ref={videoRef}
-            className="aspect-video w-full bg-black"
-            controls={status === 'playing'}
-            playsInline
-          />
+          <video ref={videoRef} className="aspect-video w-full bg-black" playsInline />
+          {status === 'playing' && <PlayerControls videoRef={videoRef} />}
         </div>
 
         <div>
           <h1 className="text-3xl font-semibold">{title}</h1>
           <p className="mt-1 text-sm text-white/50">{subtitle}</p>
-          <p className="mt-4 text-sm text-white/70">{content?.content?.synopsis}</p>
+          <p className="mt-4 text-sm text-white/70">{content?.synopsis}</p>
 
           {status === 'playing' && <p className="mt-6 text-sm text-emerald-400">Reproduciendo…</p>}
 
@@ -209,9 +211,9 @@ export default function Watch() {
                 <label className="block text-sm text-white/70">
                   Perfil
                   <select
-                    value={profileId ?? ''}
-                    onChange={(event) => setProfileId(event.target.value)}
-                    className="mt-1 w-full rounded bg-white/10 px-3 py-2 text-white"
+                    value={selected?.id ?? ''}
+                    onChange={(event) => selectProfile(event.target.value)}
+                    className="mt-1 w-full rounded border border-white/20 bg-neutral-950 px-3 py-2 text-white"
                   >
                     {profiles.map((profile) => (
                       <option key={profile.id} value={profile.id}>
@@ -221,14 +223,19 @@ export default function Watch() {
                   </select>
                 </label>
               )}
-              <button
-                type="button"
-                onClick={play}
-                disabled={status === 'starting' || !profileId}
-                className="w-full rounded bg-red-600 px-6 py-3 font-medium text-white hover:bg-red-500 disabled:opacity-50"
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => void play()}
+                disabled={status === 'starting' || !selected?.id}
               >
                 {status === 'starting' ? 'Iniciando…' : '▶ Reproducir'}
-              </button>
+              </Button>
+              {!selected?.id && (
+                <p className="text-xs text-white/50">
+                  Elegí un perfil en la barra superior para reproducir.
+                </p>
+              )}
             </div>
           )}
 
@@ -236,8 +243,8 @@ export default function Watch() {
             <div className="mt-6 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-200">
               <p>{message}</p>
               {message === PLAYER_MESSAGES.SUBSCRIPTION_REQUIRED && (
-                <Link to="/account" className="mt-3 inline-block underline">
-                  Ver mi cuenta y suscripción
+                <Link to="/plans" className="mt-3 inline-block underline">
+                  Ver planes
                 </Link>
               )}
             </div>

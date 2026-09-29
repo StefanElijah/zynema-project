@@ -1,6 +1,8 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { apiClient } from './client';
-import type { PlaybackSession } from './types';
+// The wire shape of a session is the generated contract; this module owns the
+// failure mapping, not the types.
+import type { Session as PlaybackSession } from '@zynema/api-contracts';
 
 /**
  * Playback API calls for the player (Fase 6).

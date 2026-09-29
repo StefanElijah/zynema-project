@@ -1,70 +1,47 @@
-# Getting Started with Create React App
+# Zynema — frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+The SPA. React 19 + Vite + TypeScript (strict) + Tailwind v4, with TanStack
+Query over a client generated from the BFF's OpenAPI document. The BFF is the
+only backend this app talks to (ADR-0004); the gateway is the only entry point.
 
-## Available Scripts
+## Scripts (pnpm only)
 
-In the project directory, you can run:
+```bash
+pnpm dev            # Vite dev server on :5173, /api proxied to the gateway (:8080)
+pnpm build          # production build
+pnpm typecheck      # tsc --noEmit (strict)
+pnpm lint           # eslint, zero warnings
+pnpm test           # Vitest (jsdom) unit and component tests
+pnpm test:e2e       # Playwright; specs stub the BFF, no stack required
+```
 
-### `npm start`
+Auth E2E is opt-in (`E2E_AUTH=1`) because it drives real Keycloak; everything
+else runs against stubbed `/api/v1/web/**` responses.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## API layer
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- The typed client lives in [`libs/api-contracts`](../libs/api-contracts): orval
+  generates it from the committed `openapi.json` snapshot, react-query hooks
+  included. Regenerate with `pnpm api:refresh` (needs a running BFF) then
+  `pnpm api:generate`.
+- `src/lib/api/client.ts` configures the one axios instance the generated code
+  uses: base URL, bearer token, single 401 renewal. Import hooks from
+  `@lib/api` (the wrapper) so that configuration always runs.
+- `src/lib/api/playback.ts` keeps the player's session lifecycle with its
+  failure mapping (paywall, not-ready, stream limit); it is the one hand-written
+  transport and has its own tests.
 
-### `npm test`
+## Structure
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```
+src/
+├── components/ui/       # shadcn-style primitives (Tailwind v4 theme)
+├── components/          # molecules and organisms of the app
+├── hooks/               # selected profile, watchlist actions
+├── lib/api|auth|query/  # transport, OIDC session, query defaults
+├── pages/               # one file per route (see App.tsx)
+└── stores/              # Zustand: the selected profile (persisted)
+```
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Environment variables (`VITE_API_BASE_URL`, OIDC authority/client) are
+documented in [`.env.example`](./.env.example).
