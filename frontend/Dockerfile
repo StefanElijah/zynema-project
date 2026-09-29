@@ -5,17 +5,19 @@ WORKDIR /workspace
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* pnpm-workspace.yaml* ./
+# Copy package files. The images build the workspace, not just the frontend:
+# the app depends on @zynema/api-contracts, so the lockfile install happens
+# with both manifests present.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY frontend/package.json ./frontend/
-COPY libs/api-contracts/package.json* ./libs/api-contracts/ 2>/dev/null || true
+COPY libs/api-contracts/package.json ./libs/api-contracts/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source
 COPY frontend ./frontend
-COPY libs ./libs 2>/dev/null || true
+COPY libs ./libs
 
 # Build
 WORKDIR /workspace/frontend
