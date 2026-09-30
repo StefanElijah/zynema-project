@@ -141,8 +141,12 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter zynema-frontend build
-      - run: pnpm --filter zynema-frontend exec playwright install --with-deps ${{ matrix.browser }}
-      - run: pnpm --filter zynema-frontend test:e2e -- --project=${{ matrix.browser }}
+      # Install every engine: since Playwright 1.49 chromium needs its headless
+      # shell too, and `install chromium` alone does not always provide it.
+      - run: pnpm --filter zynema-frontend exec playwright install --with-deps
+      # `exec playwright test` instead of the pnpm script: the extra `--` hop
+      # dropped the --project filter and both browsers ran in both jobs.
+      - run: pnpm --filter zynema-frontend exec playwright test --project=${{ matrix.browser }}
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
