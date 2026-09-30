@@ -13,6 +13,13 @@ x-rest-java: &rest-java
     SPRING_PROFILES_ACTIVE: docker
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_DEFAULT_ZONE}
     SPRING_CLOUD_CONFIG_URI: ${CONFIG_SERVER_URL}
+    # The import URL in each service's application.yml is built from these two
+    # placeholders (`optional:configserver:http://${CONFIG_SERVER_HOST}...`),
+    # and an explicit import URL wins over SPRING_CLOUD_CONFIG_URI. Without
+    # them the containers asked for config at localhost:8888, the optional
+    # import failed silently and the shared config was never applied.
+    CONFIG_SERVER_HOST: ${CONFIG_SERVER_HOST:-config-server}
+    CONFIG_SERVER_PORT: ${CONFIG_SERVER_PORT:-8888}
     SPRING_CLOUD_CONFIG_FAIL_FAST: 'false'
     SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL: 3000
     # Split-horizon issuer (ADR-0015): validate the public issuer, fetch keys
@@ -41,7 +48,11 @@ x-rest-java-no-config: &rest-java-no-config
   restart: unless-stopped
   networks: [zynema-net]
   env_file: .env
-  environment: &rest-java-env
+  # A DIFFERENT anchor name on purpose: reusing &rest-java-env here silently
+  # replaced the extended env block above for every `<<: *rest-java-env`
+  # service (last anchor definition wins), which quietly dropped the OTLP
+  # endpoint, the saga mode and the security overrides.
+  environment: &rest-java-no-config-env
     SPRING_PROFILES_ACTIVE: docker
     EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: ${EUREKA_DEFAULT_ZONE}
     SPRING_CLOUD_CONFIG_URI: ${CONFIG_SERVER_URL}
@@ -184,7 +195,10 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
-      CLUSTER_ID: zynema-cluster
+      # KRaft needs a base64url-encoded UUID (16 bytes, 22 chars), not a name:
+      # the broker refuses to format its log directory otherwise, and the
+      # alphabet must be URL-safe (no + or /).
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-PJ7D79_Yk_phHpfLZIC6cw}
     volumes:
       - kafka-data:/var/lib/kafka/data
     healthcheck:

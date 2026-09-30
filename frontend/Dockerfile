@@ -28,6 +28,8 @@ FROM nginx:1.27-alpine
 COPY --from=build /workspace/frontend/dist /usr/share/nginx/html
 COPY infra/nginx/frontend.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
+# 127.0.0.1, not localhost: BusyBox wget resolves localhost to ::1 first and
+# nginx listens on IPv4 only, which reads as a healthy server being down.
 HEALTHCHECK --interval=15s --timeout=3s --retries=5 \
-  CMD wget -qO- http://localhost/ || exit 1
+  CMD wget -qO- http://127.0.0.1/ || exit 1
 CMD ["nginx", "-g", "daemon off;"]
