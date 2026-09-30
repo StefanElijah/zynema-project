@@ -126,6 +126,18 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-json-schema-serializer</artifactId>
                 <version>${confluent.version}</version>
+                <exclusions>
+                    <!-- Confluent 7.6 ships swagger-annotations 2.1.10, which
+                         shares the io.swagger.v3.oas.annotations package with
+                         springdoc's swagger-annotations-jakarta 2.2.x and wins
+                         the classpath race: springdoc then dies with
+                         NoSuchMethodError on Schema.requiredMode(). The
+                         serializer never touches those annotations. -->
+                    <exclusion>
+                        <groupId>io.swagger.core.v3</groupId>
+                        <artifactId>swagger-annotations</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <!-- Internal modules -->
