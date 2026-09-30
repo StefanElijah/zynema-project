@@ -257,14 +257,45 @@ dropped the OTLP endpoint — spans stopped being exported without a single
 error — and stale `file_sd` targets made every service look down minutes after
 a rebuild. None of it breaks a build; all of it breaks the promise.
 
-## Phase 10 — CI/CD, quality and polish
+## Phase 10 — CI/CD, quality and polish ✅
 
-- [ ] GitHub Actions matrices for backend and frontend
-- [ ] JaCoCo coverage per module, SonarQube Cloud gate on PRs
-- [ ] OpenAPI specs published as CI artefacts
-- [ ] Semantic release + generated CHANGELOG
-- [ ] C4 diagrams refreshed; K8s manifests documented
-- [ ] 5-minute demo script
+- [x] Every workflow made real: Node 22 for the frontend (orval 8 needs it),
+      the broken `@nx/maven` plugin out of the critical path, lint/typecheck
+      without swallowed failures, Vitest coverage configured, the backend in
+      **three parallel module groups** instead of three lifecycle passes, the
+      e2e suite as a **per-browser matrix**, and compose/k8s validation that
+      works on a fresh runner (`.env` from the example, kubeconform instead
+      of a cluster-dependent `kubectl --dry-run`)
+- [x] JaCoCo per module (reports uploaded) and the **SonarCloud workflow with
+      the quality gate** on PRs: one project, Java + TypeScript sources,
+      JaCoCo XML and lcov wired; it activates the moment `SONAR_TOKEN` exists
+      and skips itself (green) until then
+- [x] **OpenAPI documents published as artifacts**: one job per service boots
+      its jar and captures `/v3/api-docs`; the BFF job also diffs the live
+      document against `libs/api-contracts/openapi.json`, so a stale SPA
+      snapshot fails CI instead of shipping
+- [x] **Semantic release** on `main`: CHANGELOG.md committed, tag and GitHub
+      Release generated from the conventional commits the repo already
+      enforces
+- [x] C4 levels 2–4 refreshed (video worker, MinIO + edge, Kafka + registry,
+      notification, observability stack, generated client) and the K8s
+      manifests documented honestly (only the registry, and why)
+- [x] A five-minute **demo script** (`docs/demo-script.md`) covering product,
+      observability and the engineering story
+
+**Lesson worth keeping:** the CI had been red for four phases and nobody
+noticed, because the signal everyone trusted was local. Two failures in this
+phase deserve to be remembered. First, a test that was green **only by
+accident**: the Keycloak integration test passed because every Spring context
+in the JVM shared a Kafka consumer group, and whichever context consumed the
+command happened to succeed against the Keycloak that docker compose left
+running on `localhost:8180`; in CI the same code had no localhost to lean on.
+A test that depends on ambient state is worse than a failing test — it hides
+the bug until the environment changes. Second, the repo had never validated
+its own compose file on a clean machine: 240 invisible control characters in
+the section banners were tolerated locally and rejected by the runner. Same
+family as F4, F5 and F9: an integration that silently does nothing, or a gate
+that silently does not run, is worse than no gate at all.
 
 ---
 
