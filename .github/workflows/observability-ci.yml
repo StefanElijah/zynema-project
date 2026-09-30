@@ -53,10 +53,27 @@ jobs:
           docker run --rm --entrypoint amtool
           -v "${{ github.workspace }}/infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"
           prom/alertmanager:latest check-config /etc/alertmanager/alertmanager.yml
+      - name: Validate Grafana provisioning and dashboards
+        run: |
+          python3 - <<'PY'
+          import glob, json, yaml
+          for path in glob.glob('infra/observability/grafana-provisioning/**/*.yml', recursive=True):
+              yaml.safe_load(open(path))
+              print('ok', path)
+          for path in glob.glob('infra/observability/grafana-dashboards/*.json'):
+              json.load(open(path))
+              print('ok', path)
+          PY
       - name: Validate Loki
-        run: docker run --rm -v "${{ github.workspace }}/infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro" grafana/loki:2.9.8 -config.file=/etc/loki/local-config.yaml -verify-config
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}/infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro"
+          grafana/loki:2.9.8 --config.file=/etc/loki/local-config.yaml --verify-config
       - name: Validate Tempo
-        run: docker run --rm -v "${{ github.workspace }}/infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro" grafana/tempo:2.5.0 -config.file=/etc/tempo.yaml -verify-config
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}/infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro"
+          grafana/tempo:2.5.0 --config.file=/etc/tempo.yaml --config.verify=true
       - name: Validate nginx HLS
         run: docker run --rm -v "${{ github.workspace }}/infra/nginx/hls.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine nginx -t
 

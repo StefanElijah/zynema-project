@@ -222,14 +222,40 @@ the header disappeared — springdoc does not publish `@RequestHeader` parameter
 unless they are annotated, and no generated code can invent them. The contract
 is the spec, not the controller.
 
-## Phase 9 — Observability end-to-end
+## Phase 9 — Observability end-to-end ✅
 
-- [ ] Prometheus scrapes every service (via Eureka where possible)
-- [ ] Grafana datasources: Prometheus, Loki, Tempo
-- [ ] Per-service dashboards (JVM, latency, error rate, RPS)
-- [ ] Distributed traces end-to-end
-- [ ] Centralised logs (Loki + Promtail)
-- [ ] Alerts: service down, error rate > 5%, p99 > 2s
+- [x] Prometheus discovers every registered service from Eureka: `file_sd`
+      bridge (`infra/scripts/eureka-targets.mjs` + committed snapshot +
+      `make refresh-targets`), with only prometheus and eureka-server static
+      (ADR-0031)
+- [x] Grafana provisioned from git: three datasources with fixed uids and
+      cross-links (Loki derived field → Tempo; Tempo tracesToLogs and service
+      map → Loki/Prometheus)
+- [x] Dashboards: an overview (availability, RPS, error %, p99, heap) and a
+      parameterized per-service view (RED + JVM + pool + breakers + span
+      metrics + service graph + its error logs)
+- [x] Distributed traces end-to-end: OTLP to Tempo (Fase 4) plus span metrics
+      and service graphs remote-written from Tempo's metrics generator to
+      Prometheus
+- [x] Centralised logs: Promtail discovers containers over the Docker socket
+      and labels them with the compose service name; the shared log pattern
+      prints `traceId`/`spanId` when the logger runs inside a span scope, and
+      Tempo links a trace back to its service's logs by service and time window
+- [x] Alerts: service down (2m), more than 5% 5xx (10m) and p99 above 2s
+      (10m), evaluated by Prometheus and delivered by Alertmanager to MailHog
+      — tested end to end (`docker stop`, mail at `:8025`, resolved mail)
+
+**Lesson worth keeping:** a provisioning directory that does not exist is not
+an error. Docker creates the mount empty, Grafana starts happily and serves a
+UI with no datasources — the same silent no-op family as the missing Config
+client (F4) and the missing AOP starter (F5). The verification for an
+integration is never "the process started", it is "the thing it was supposed
+to do happened". Running the stack in this phase also surfaced two more
+invisible failures of the same family: a **duplicate YAML anchor**
+(`&rest-java-env` defined twice) silently replaced the services' env block and
+dropped the OTLP endpoint — spans stopped being exported without a single
+error — and stale `file_sd` targets made every service look down minutes after
+a rebuild. None of it breaks a build; all of it breaks the promise.
 
 ## Phase 10 — CI/CD, quality and polish
 

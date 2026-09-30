@@ -56,12 +56,16 @@ alert, read the mail at `http://localhost:8025` — instead of a receiver that
 goes nowhere. MailHog lives in the `core` profile: without it alerts still
 evaluate and group (visible in Alertmanager's UI), only delivery fails.
 
-**Signals reference each other.** Logs gain `[traceId,spanId]` from Micrometer's
-MDC through the shared logging pattern; the Loki datasource turns the id into a
-Tempo link (derived field) and Tempo links back to Loki; Tempo's
-`metrics_generator` remote-writes span metrics and service graphs to
-Prometheus (`--web.enable-remote-write-receiver`), so RED dashboards exist even
-for spans whose services emit no HTTP metrics.
+**Signals reference each other.** The shared logging pattern prints
+`[traceId,spanId]` from the MDC; the Loki datasource turns the id into a Tempo
+link (derived field) and Tempo links back to Loki by service and time window —
+the direction that matters when debugging a trace, and the one that does not
+depend on the logger having been called inside a span scope. Tempo's
+`metrics_generator` remote-writes span metrics and service graphs to Prometheus
+(`--web.enable-remote-write-receiver`), so RED dashboards exist even for spans
+whose services emit no HTTP metrics. The generator processors are **disabled by
+default** in Tempo 2.5: the `processor` block configures them, the `overrides`
+block enables them.
 
 ## Alternatives considered
 
@@ -79,7 +83,11 @@ for spans whose services emit no HTTP metrics.
 ## Consequences
 
 - Target staleness is possible between registry changes and
-  `make refresh-targets`; the runbook documents when to run it.
+  `make refresh-targets`; the runbook documents when to run it. The file_sd
+  job re-reads the file every 30 s (`refresh_interval`) because inotify events
+  do not always cross a bind mount on Docker Desktop — without it, a rebuilt
+  container keeps being scraped at its old IP and the services show up as down
+  while they are perfectly healthy (observed in the phase verification).
 - `promtool` in CI now validates config **and** rules, and `amtool` validates
   Alertmanager; the Prometheus CI step mounts the whole observability
   directory because `rule_files` resolve inside the container.

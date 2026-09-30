@@ -142,3 +142,11 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+# Trace and span ids are already in the MDC (Micrometer tracing); printing
+# them is what turns a log line into something Grafana can click through: the
+# Loki datasource parses this pattern into a Tempo link (ADR-0031).
+logging:
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n'

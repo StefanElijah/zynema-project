@@ -16,10 +16,6 @@
     "labels": { "job": "catalog-service", "namespace": "zynema" }
   },
   {
-    "targets": ["config-server:8888"],
-    "labels": { "job": "config-server", "namespace": "zynema" }
-  },
-  {
     "targets": ["notification-service:8087"],
     "labels": { "job": "notification-service", "namespace": "zynema" }
   },

@@ -15,12 +15,18 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
-  # Eureka does not register itself: its metrics cannot come from the registry
-  # it serves, so this one stays static.
+  # The bootstrap layer does not register with Eureka (the config server
+  # registered in earlier phases, but its client is disabled to keep the
+  # chicken-and-egg honest), so these two come from static targets.
   - job_name: 'eureka-server'
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['eureka-server:8761']
+
+  - job_name: 'config-server'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ['config-server:8888']
 
   # Every application that registers in Eureka is discovered from the registry:
   # `make refresh-targets` regenerates targets/zynema.json and Prometheus
@@ -32,3 +38,7 @@ scrape_configs:
     file_sd_configs:
       - files:
           - /etc/prometheus/targets/*.json
+        # Re-read the file on a timer instead of relying on inotify: with a
+        # bind-mounted file on Docker Desktop the watch event does not always
+        # reach the container, and targets silently go stale after a rebuild.
+        refresh_interval: 30s

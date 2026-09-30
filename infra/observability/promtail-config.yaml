@@ -7,19 +7,24 @@ positions:
 clients:
   - url: http://loki:3100/loki/api/v1/push
 
+# Containers are discovered through the Docker socket, not by reading host
+# log paths: on Docker Desktop (Windows/macOS) those paths live inside the VM,
+# so the old path-based scrape silently collected nothing. The compose service
+# name is the identity every signal shares — it is the Prometheus job and the
+# Tempo `service.name` — so it is what Loki labels (ADR-0031).
 scrape_configs:
-  - job_name: containers
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: containerlogs
-          __path__: /var/lib/docker/containers/**/*-json.log
-
-  - job_name: system
-    static_configs:
-      - targets:
-          - localhost
-        labels:
-          job: syslog
-          __path__: /var/log/syslog
+  - job_name: zynema-containers
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 15s
+        filters:
+          - name: name
+            values: ['zynema-']
+    relabel_configs:
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        target_label: service
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/(.*)'
+        target_label: container
+      - source_labels: ['__meta_docker_container_log_stream']
+        target_label: stream
