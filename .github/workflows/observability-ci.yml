@@ -19,6 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The compose file is meant to be used with .env (make env does this);
+      # on a fresh runner the interpolation sources are missing and validation
+      # fails for the wrong reason.
+      - name: Prepare environment file
+        run: cp .env.example .env
       - name: Validate base compose
         run: docker compose config -q
       - name: Validate core profile
@@ -96,11 +101,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-      - name: Validate k8s YAML
-        run: |
-          while IFS= read -r f; do
-            echo "Validating $f"
-            kubectl apply --dry-run=client -f "$f"
-          done < <(find infra/k8s -name '*.yaml')
+      # kubeconform validates against upstream schemas and needs no cluster;
+      # `kubectl apply --dry-run=client` still fetches the server's OpenAPI
+      # schema and fails without one.
+      - name: Validate k8s YAML (kubeconform)
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}/infra/k8s:/manifests:ro"
+          ghcr.io/yannh/kubeconform:latest -strict -summary /manifests
