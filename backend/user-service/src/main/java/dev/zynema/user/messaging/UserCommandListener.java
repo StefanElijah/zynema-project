@@ -20,7 +20,7 @@ public class UserCommandListener {
     private final UserCommandDeadLetterService deadLetters;
 
     @RetryableTopic
-    @KafkaListener(topics = KafkaTopics.USER_COMMANDS, groupId = "user-service",
+    @KafkaListener(topics = KafkaTopics.USER_COMMANDS, groupId = "${zynema.messaging.group-prefix:}user-service",
         containerFactory = "userCommandsListenerContainerFactory")
     public void onUserCommand(ConsumerRecord<String, UserCommand> record) {
         roleCommands.onUserCommand(EventEnvelopes.of(record));

@@ -90,10 +90,19 @@ public abstract class AbstractUserIntegrationTest {
             () -> "org.apache.kafka.common.serialization.StringDeserializer");
         registry.add("spring.kafka.consumer.value-deserializer",
             () -> "io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer");
-        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
+        // Unique groups would replay every event the broker still holds under
+        // `earliest`; tests publish after the context is up, so `latest` is
+        // both correct and hermetic.
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "latest");
         registry.add("spring.kafka.consumer.properties.schema.registry.url", () -> registryUrl);
         // The relay only runs when a test calls it: no scheduler races.
         registry.add("zynema.messaging.outbox.initial-delay", () -> "1h");
+        // Every Spring context stays alive in this JVM (TestContext cache) and
+        // the listeners share a consumer group in production: without a unique
+        // prefix per context, another context's consumer can steal the command
+        // and process it against the wrong dependencies.
+        String groupPrefix = "test-" + java.util.UUID.randomUUID() + "-";
+        registry.add("zynema.messaging.group-prefix", () -> groupPrefix);
     }
 
     /** Truncates what the write path owns, so events do not leak between tests. */
