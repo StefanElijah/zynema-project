@@ -20,7 +20,7 @@ const eurekaUrl =
   process.env.EUREKA_URL ?? `http://localhost:${process.env.EUREKA_PORT ?? '8761'}/eureka/apps`;
 const outFile = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  '../observability/targets/zynema.json',
+  '../observability/targets/zynema.json'
 );
 
 let response;
@@ -57,4 +57,6 @@ await mkdir(dirname(outFile), { recursive: true });
 await writeFile(outFile, `${JSON.stringify(groups, null, 2)}\n`);
 
 const total = groups.reduce((count, group) => count + group.targets.length, 0);
-console.log(`targets/zynema.json refreshed from ${eurekaUrl} (${groups.length} jobs, ${total} instances)`);
+console.log(
+  `targets/zynema.json refreshed from ${eurekaUrl} (${groups.length} jobs, ${total} instances)`
+);

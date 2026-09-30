@@ -35,10 +35,10 @@ We use **Spring Cloud 2025.0.3** with **Spring Boot 3.5.0**.
 
 Spring Cloud 2025.0 renamed several artifacts and property prefixes:
 
-| Old (2024.0.x) | New (2025.0.x) |
-|---|---|
+| Old (2024.0.x)                 | New (2025.0.x)                                |
+| ------------------------------ | --------------------------------------------- |
 | `spring-cloud-starter-gateway` | `spring-cloud-starter-gateway-server-webflux` |
-| `spring.cloud.gateway.*` | `spring.cloud.gateway.server.webflux.*` |
+| `spring.cloud.gateway.*`       | `spring.cloud.gateway.server.webflux.*`       |
 
 Both are applied in this repo:
 

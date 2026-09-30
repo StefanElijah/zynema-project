@@ -1,21 +1,14 @@
-# Generated or vendored files: never format these.
+# Prettier is the formatter for code, config and docs. This file only excludes
+# generated and vendored output; everything else is expected to pass
+# `pnpm format:check`, which is what CI runs.
+node_modules
+**/node_modules
+**/target
+**/dist
+**/coverage
+**/playwright-report
+**/test-results
+.nx
+.git
 pnpm-lock.yaml
-package-lock.json
-yarn.lock
-
-node_modules/
-dist/
-build/
-out/
-target/
-coverage/
-test-results/
-playwright-report/
-
-.opencode-backup/
-.infrastructure/
-infra/k8s/overlays/
-
-# Java build output that may sit next to sources
-**/*.class
-**/*.jar
+infra/k8s

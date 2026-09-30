@@ -20,17 +20,17 @@
 <footer>
 ```
 
-| Type | Use for |
-|---|---|
-| `feat` | New feature |
-| `fix` | Bug fix |
-| `chore` | Tooling, deps, config |
-| `docs` | Documentation only |
+| Type       | Use for                             |
+| ---------- | ----------------------------------- |
+| `feat`     | New feature                         |
+| `fix`      | Bug fix                             |
+| `chore`    | Tooling, deps, config               |
+| `docs`     | Documentation only                  |
 | `refactor` | Code change without behavior change |
-| `test` | Adding or fixing tests |
-| `perf` | Performance improvement |
-| `ci` | CI/CD changes |
-| `build` | Build system changes |
+| `test`     | Adding or fixing tests              |
+| `perf`     | Performance improvement             |
+| `ci`       | CI/CD changes                       |
+| `build`    | Build system changes                |
 
 **Examples:**
 
@@ -89,7 +89,7 @@ pnpm test:e2e            # Playwright
 - [ ] `mvn -B verify` passes (backend changes)
 - [ ] No new `SonarQube` issues
 - [ ] Conventional Commit messages
-- [ ] PR description explains *why*, not just *what*
+- [ ] PR description explains _why_, not just _what_
 
 ## Architectural changes
 

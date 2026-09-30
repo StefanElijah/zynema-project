@@ -22,6 +22,7 @@ PostgreSQL database (`zynema_catalog`, `zynema_user`, `zynema_payment`,
 etc.) and no other service can read or write to it.
 
 Cross-service data is exchanged via:
+
 - **APIs** (OpenFeign clients) for synchronous reads.
 - **Events** (Kafka) for asynchronous state propagation.
 

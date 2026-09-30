@@ -44,5 +44,12 @@ export default defineConfig({
     // tests/e2e are driven by a different runner and must not be picked up.
     include: ['src/**/*.{test,spec}.{js,jsx,ts,tsx}'],
     exclude: ['tests/e2e/**', 'node_modules/**', 'dist/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.{test,spec}.{ts,tsx}', 'src/test/**', 'src/vite-env.d.ts'],
+    },
   },
 });

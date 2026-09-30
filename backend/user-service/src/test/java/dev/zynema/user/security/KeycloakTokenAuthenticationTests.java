@@ -185,14 +185,19 @@ class KeycloakTokenAuthenticationTests extends AbstractUserIntegrationTest {
 
     // ────────────────────────────── helpers ────────────────────────────
 
+    /**
+     * CI runners process the command through Kafka and the schema registry
+     * more slowly than a warm laptop (it timed out at 30s there): the wait is
+     * generous and polls often, which costs nothing when the reply is fast.
+     */
     private void await(String description, BooleanSupplier condition) {
-        long deadline = System.currentTimeMillis() + 30_000;
+        long deadline = System.currentTimeMillis() + 60_000;
         while (System.currentTimeMillis() < deadline) {
             if (condition.getAsBoolean()) {
                 return;
             }
             try {
-                Thread.sleep(200);
+                Thread.sleep(100);
             } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
                 throw new IllegalStateException("Interrupted while waiting for " + description, ex);
@@ -214,7 +219,7 @@ class KeycloakTokenAuthenticationTests extends AbstractUserIntegrationTest {
         List<UserEvent> events = new ArrayList<>();
         try (KafkaConsumer<String, UserEvent> consumer = new KafkaConsumer<>(props)) {
             consumer.subscribe(List.of(KafkaTopics.USER_EVENTS));
-            long deadline = System.currentTimeMillis() + Duration.ofSeconds(30).toMillis();
+            long deadline = System.currentTimeMillis() + Duration.ofSeconds(60).toMillis();
             while (events.isEmpty() && System.currentTimeMillis() < deadline) {
                 consumer.poll(Duration.ofMillis(500)).forEach(record -> {
                     if (key.equals(record.key())) {

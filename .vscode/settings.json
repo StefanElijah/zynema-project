@@ -45,8 +45,6 @@
   "java.configuration.updateBuildConfiguration": "automatic",
   "spring-boot.dashboard.endpoint": "http://localhost:8761",
   "java.test.config": {
-    "vmArgs": [
-      "-XX:+EnableDynamicAgentLoading"
-    ]
+    "vmArgs": ["-XX:+EnableDynamicAgentLoading"]
   }
 }

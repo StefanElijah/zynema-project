@@ -14,13 +14,12 @@ on:
 
 jobs:
   build:
-    name: Build & Test (Java ${{ matrix.java }} + Spring Boot ${{ matrix.boot }})
+    name: Build & Test (Java ${{ matrix.java }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         java: ['21']
-        boot: ['3.5.0']
 
     services:
       postgres:
@@ -28,7 +27,6 @@ jobs:
         env:
           POSTGRES_USER: zynema
           POSTGRES_PASSWORD: devpassword
-          POSTGRES_MULTIPLE_DATABASES: zynema_catalog,zynema_user,zynema_payment,zynema_playback,zynema_auth,zynema_notification
         ports:
           - 5432:5432
         options: >-
@@ -61,17 +59,12 @@ jobs:
       - name: Verify Maven
         run: mvn -B -version
 
-      - name: Compile (verify)
+      # One lifecycle: tests are hermetic (no config server, no Eureka) and
+      # integration tests bring their own containers, so a single verify is
+      # enough — the previous three lifecycle passes tripled the job time.
+      - name: Build and test
         working-directory: backend
-        run: mvn -B -ntp -DskipTests verify
-
-      - name: Run unit tests
-        working-directory: backend
-        run: mvn -B -ntp test
-
-      - name: Run integration tests (Testcontainers)
-        working-directory: backend
-        run: mvn -B -ntp verify -Dspring.profiles.active=ci
+        run: mvn -B -ntp verify
 
       - name: Upload JaCoCo coverage
         if: always()
@@ -88,7 +81,7 @@ jobs:
           path: backend/**/target/surefire-reports/
 
   quality:
-    name: Quality (format, structure)
+    name: Quality (compose, layout)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

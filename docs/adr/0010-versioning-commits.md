@@ -35,10 +35,10 @@ We adopt:
 
 ## Examples
 
-| Type | PR title | Effect on version |
-|---|---|---|
-| `feat` | feat(catalog): add pagination to /movies | minor bump |
-| `fix` | fix(payment): prevent double-charge on retry | patch bump |
-| `feat!` | feat!: rename /movies to /titles | major bump |
-| `chore` | chore(deps): bump spring-boot to 3.5.1 | no bump |
-| `docs` | docs(adr): add ADR-0011 | no bump |
+| Type    | PR title                                     | Effect on version |
+| ------- | -------------------------------------------- | ----------------- |
+| `feat`  | feat(catalog): add pagination to /movies     | minor bump        |
+| `fix`   | fix(payment): prevent double-charge on retry | patch bump        |
+| `feat!` | feat!: rename /movies to /titles             | major bump        |
+| `chore` | chore(deps): bump spring-boot to 3.5.1       | no bump           |
+| `docs`  | docs(adr): add ADR-0011                      | no bump           |

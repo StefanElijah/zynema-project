@@ -8,14 +8,17 @@ on:
       - 'libs/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - '.prettierignore'
       - '.github/workflows/frontend-ci.yml'
   push:
     branches: [main, develop]
     paths:
       - 'frontend/**'
+      - 'libs/**'
 
 env:
-  NODE_VERSION: '20'
+  # Orval 8 (and its Scalar dependency) requires Node >= 22.
+  NODE_VERSION: '22'
 
 jobs:
   install:
@@ -61,12 +64,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm --filter zynema-frontend type-check || true
+      - name: ESLint (frontend) and contracts type-check
+        run: pnpm lint
+      - name: Type-check (frontend)
+        run: pnpm --filter zynema-frontend typecheck
+      - name: Prettier (whole repo, .prettierignore applies)
+        run: pnpm format:check
 
   test:
-    name: Unit tests (Vitest)
+    name: Unit tests (Vitest + coverage)
     runs-on: ubuntu-latest
     needs: install
     steps:
@@ -79,7 +85,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter zynema-frontend test
+      - run: pnpm --filter zynema-frontend test:coverage
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
