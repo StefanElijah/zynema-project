@@ -14,12 +14,24 @@ on:
 
 jobs:
   build:
-    name: Build & Test (Java ${{ matrix.java }})
+    name: Build & test (${{ matrix.group }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # Three groups instead of one long job: the wall clock drops without
+      # changing what runs — each group builds its own dependencies with `-am`.
       matrix:
-        java: ['21']
+        group:
+          - platform
+          - domains
+          - async
+        include:
+          - group: platform
+            modules: event-contracts,common,eureka-server,config-server,api-gateway,auth-service
+          - group: domains
+            modules: catalog-service,user-service
+          - group: async
+            modules: payment-service,playback-service,bff-service,notification-service,video-worker
 
     services:
       postgres:
@@ -49,45 +61,49 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: ${{ matrix.java }}
+          java-version: '21'
           cache: 'maven'
 
-      - name: Verify Maven
-        run: mvn -B -version
-
       # One lifecycle: tests are hermetic (no config server, no Eureka) and
-      # integration tests bring their own containers, so a single verify is
-      # enough — the previous three lifecycle passes tripled the job time.
+      # integration tests bring their own containers.
       - name: Build and test
         working-directory: backend
-        run: mvn -B -ntp verify
+        run: mvn -B -ntp -pl ${{ matrix.modules }} -am verify
 
       - name: Upload JaCoCo coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-coverage
+          name: jacoco-coverage-${{ matrix.group }}
           path: backend/**/target/site/jacoco/
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: backend-test-results
+          name: backend-test-results-${{ matrix.group }}
           path: backend/**/target/surefire-reports/
 
   quality:
-    name: Quality (compose, layout)
+    name: Quality (compose, layout, workflows)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Prepare environment file
+        run: cp .env.example .env
       - name: Validate docker-compose
         run: docker compose config -q
       - name: Validate Maven multi-module layout
         working-directory: backend
         run: |
           mvn -B -ntp validate
+      - name: Lint workflows
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}:/repo"
+          -w /repo
+          rhysd/actionlint:latest

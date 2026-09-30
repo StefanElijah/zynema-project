@@ -12,6 +12,10 @@ on:
     branches: [main, develop]
     paths:
       - 'infra/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.override.yml'
+      - '.env.example'
+      - '.github/workflows/observability-ci.yml'
 
 jobs:
   validate-compose:

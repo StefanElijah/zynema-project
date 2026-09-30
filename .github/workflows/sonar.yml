@@ -1,0 +1,70 @@
+name: SonarCloud
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main]
+
+jobs:
+  analysis:
+    name: Analysis and quality gate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      # Empty until the project owner creates the SonarCloud project and sets
+      # the secret; the steps below skip themselves instead of failing, so the
+      # workflow lands green and activates the gate the moment it exists.
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Not configured yet
+        if: env.SONAR_TOKEN == ''
+        run: echo "SONAR_TOKEN is not configured; skipping the SonarCloud gate."
+
+      - name: Set up JDK 21
+        if: env.SONAR_TOKEN != ''
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Backend tests (JaCoCo XML)
+        if: env.SONAR_TOKEN != ''
+        working-directory: backend
+        run: mvn -B -ntp verify
+
+      - if: env.SONAR_TOKEN != ''
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - if: env.SONAR_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Frontend tests (lcov)
+        if: env.SONAR_TOKEN != ''
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter zynema-frontend test:coverage
+
+      - name: SonarCloud scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v8
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Quality gate
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-quality-gate-action@v1
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
