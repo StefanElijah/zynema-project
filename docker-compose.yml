@@ -76,7 +76,7 @@ x-eureka: &eureka
     start_period: 30s
 
 services:
-  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• CORE INFRASTRUCTURE â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  # CORE INFRASTRUCTURE
 
   eureka-server:
     <<: *eureka
@@ -132,7 +132,7 @@ services:
       SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_ENABLED: 'true'
       SPRING_CLOUD_GATEWAY_SERVER_WEBFLUX_DISCOVERY_LOCATOR_LOWER-CASE_SERVICE_ID: 'true'
 
-  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DATA LAYER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  # DATA LAYER
 
   postgres:
     profiles: ['core']
@@ -252,7 +252,7 @@ services:
         echo "Topics ready:"
         kafka-topics --bootstrap-server kafka:9092 --list | grep zynema
 
-  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• DOMAIN MICROSERVICES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  # DOMAIN MICROSERVICES
 
   catalog-service:
     <<: *rest-java
@@ -374,7 +374,7 @@ services:
       SPRING_MAIL_HOST: mailhog
       SPRING_MAIL_PORT: 1025
 
-  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• AUTH â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  # AUTH
 
   keycloak:
     profiles: ['auth']
@@ -421,7 +421,7 @@ services:
       - '1025:1025'
       - '8025:8025'
 
-  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• STORAGE / VIDEO â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  # STORAGE / VIDEO
 
   minio:
     profiles: ['storage']
@@ -488,7 +488,7 @@ services:
       minio:
         condition: service_started
 
-  # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• OBSERVABILITY (PLG + Tempo) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+  # OBSERVABILITY (PLG + Tempo)
 
   prometheus:
     profiles: ['observability']
