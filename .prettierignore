@@ -1,0 +1,14 @@
+# Prettier is the formatter for code, config and docs. This file only excludes
+# generated and vendored output; everything else is expected to pass
+# `pnpm format:check`, which is what CI runs.
+node_modules
+**/node_modules
+**/target
+**/dist
+**/coverage
+**/playwright-report
+**/test-results
+.nx
+.git
+pnpm-lock.yaml
+infra/k8s

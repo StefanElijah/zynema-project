@@ -26,20 +26,24 @@ own Git repo and point the config-server at it.
 ```
 config-repo/
 ├── README.md
-├── application.yml           # Shared defaults for ALL services
-├── application-dev.yml       # Profile: dev
-├── application-docker.yml    # Profile: docker (compose)
-├── eureka-server.yml
-├── config-server.yml
-├── api-gateway.yml
-├── auth-service.yml
-├── user-service.yml
-├── catalog-service.yml
-├── payment-service.yml
+├── application.yml             # Shared defaults for ALL consumers
+├── auth-service.yml            # Per-service overrides
+├── catalog-service.yml         #   (each service adds `db` to the
+├── user-service.yml            #    readiness group; gateway and BFF
+├── payment-service.yml         #    only have Redis and do not add it)
 ├── playback-service.yml
-├── bff-service.yml
 └── notification-service.yml
 ```
+
+`eureka-server` and `config-server` do not consume this repository: they are the
+bootstrap layer, so a config client in them would be a chicken-and-egg problem.
+`api-gateway` and `bff-service` consume it but need no per-service file.
+
+## Who consumes it, and since when
+
+Services need **`spring-cloud-starter-config`** on the classpath; without it
+Spring silently skips an `optional:configserver:` import (see the F4 runbook
+entry). The file is only half of the contract — the dependency is the other.
 
 ## How it's used
 
@@ -54,6 +58,10 @@ environment:
 
 ## Adding a new service
 
-1. Create `<service-name>.yml` with overrides.
-2. Commit in the main repo: `git add infra/config-repo/ && git commit -m "config: add <service-name>"`.
-3. Restart config-server: `docker compose restart config-server`.
+1. Add `spring-cloud-starter-config` to the service's `pom.xml`.
+2. If it has a database, create `<service-name>.yml` extending the readiness
+   group (see any existing file); otherwise there is nothing to add.
+3. Commit in the main repo: `git add infra/config-repo/ && git commit -m "config: add <service-name>"`.
+4. Restart config-server: `docker compose restart config-server`.
+5. Verify the fetch: the service logs `Fetching config from server at ...` and
+   `/actuator/env` shows a `configserver` property source.

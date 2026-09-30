@@ -1,4 +1,4 @@
-﻿package dev.zynema.payment;
+package dev.zynema.payment;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

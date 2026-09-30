@@ -8,14 +8,17 @@ on:
       - 'libs/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      - '.prettierignore'
       - '.github/workflows/frontend-ci.yml'
   push:
     branches: [main, develop]
     paths:
       - 'frontend/**'
+      - 'libs/**'
 
 env:
-  NODE_VERSION: '20'
+  # Orval 8 (and its Scalar dependency) requires Node >= 22.
+  NODE_VERSION: '22'
 
 jobs:
   install:
@@ -61,12 +64,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm format:check
-      - run: pnpm --filter zynema-frontend type-check || true
+      - name: ESLint (frontend) and contracts type-check
+        run: pnpm lint
+      - name: Type-check (frontend)
+        run: pnpm --filter zynema-frontend typecheck
+      - name: Prettier (whole repo, .prettierignore applies)
+        run: pnpm format:check
 
   test:
-    name: Unit tests (Vitest)
+    name: Unit tests (Vitest + coverage)
     runs-on: ubuntu-latest
     needs: install
     steps:
@@ -79,7 +85,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter zynema-frontend test
+      - run: pnpm --filter zynema-frontend test:coverage
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
@@ -88,9 +94,15 @@ jobs:
           path: frontend/coverage/
 
   build:
-    name: Build (Vite)
+    name: Build (Vite, Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     needs: install
+    strategy:
+      fail-fast: false
+      # Current LTS and the next one: a dependency dropping Node 22 should
+      # fail one leg of the matrix, not surprise a contributor later.
+      matrix:
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -98,20 +110,26 @@ jobs:
           version: 9.15.4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node }}
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter zynema-frontend build
       - name: Upload dist
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-dist
+          name: frontend-dist-node${{ matrix.node }}
           path: frontend/dist/
 
   e2e:
-    name: E2E (Playwright)
+    name: E2E (Playwright, ${{ matrix.browser }})
     runs-on: ubuntu-latest
     needs: [lint, build]
+    strategy:
+      fail-fast: false
+      # One job per browser: each installs a single engine (cheaper than one
+      # job installing both) and runs the suite in parallel.
+      matrix:
+        browser: [chromium, firefox]
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -123,11 +141,15 @@ jobs:
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter zynema-frontend build
-      - run: pnpm --filter zynema-frontend exec playwright install --with-deps chromium
-      - run: pnpm --filter zynema-frontend test:e2e
+      # Install every engine: since Playwright 1.49 chromium needs its headless
+      # shell too, and `install chromium` alone does not always provide it.
+      - run: pnpm --filter zynema-frontend exec playwright install --with-deps
+      # `exec playwright test` instead of the pnpm script: the extra `--` hop
+      # dropped the --project filter and both browsers ran in both jobs.
+      - run: pnpm --filter zynema-frontend exec playwright test --project=${{ matrix.browser }}
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.browser }}
           path: frontend/playwright-report/

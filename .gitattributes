@@ -1,0 +1,25 @@
+# Normalise line endings so the repo behaves the same on Windows, macOS and Linux.
+# Git stores LF in the repository; working trees get the platform default
+# unless a rule below says otherwise.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF so cmd/PowerShell do not choke on LF-only files.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binary assets must never be normalised.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.war binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+
+# Generated files: exclude from language statistics and diffs.
+pnpm-lock.yaml linguist-generated=true

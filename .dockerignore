@@ -1,0 +1,13 @@
+# The build context is the repository root (every service copies its own
+# subtree). Without these exclusions the daemon ships node_modules, Maven
+# output and git history over the socket, which is slow and pointless: the
+# images build their dependencies themselves, and the frontend installs the
+# workspace from the lockfile inside the build stage.
+**/node_modules
+**/target
+**/dist
+**/playwright-report
+**/test-results
+.git
+.env
+**/*.log

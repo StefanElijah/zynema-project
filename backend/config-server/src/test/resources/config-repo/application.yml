@@ -1,0 +1,4 @@
+# Minimal config fixture for ConfigServerApplicationTests.
+# Kept tiny on purpose: the smoke test only proves the native backend starts.
+info:
+  test-fixture: true

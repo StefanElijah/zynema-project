@@ -5,26 +5,26 @@
   "description": "Production-grade streaming platform simulation with Netflix-style microservice architecture. Multi-stack monorepo: React + Vite frontend, Spring Boot 3.5 microservicios backend, full observability stack.",
   "packageManager": "pnpm@9.15.4",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=9.0.0"
   },
   "scripts": {
     "preinstall": "node -e \"const e=process.env.npm_execpath||'';if(e.includes('npm')&&!e.includes('pnpm')){console.error('\\n\\u274c Este proyecto usa pnpm exclusivamente.\\n\\u2705 Ejecuta: pnpm install\\n');process.exit(1)}\"",
-    "dev": "nx run-many --target=serve --all --parallel=3",
-    "dev:frontend": "nx serve frontend",
-    "dev:backend": "nx run-many --target=serve --projects=tag:backend --parallel=3",
-    "build": "nx run-many --target=build --all",
-    "build:frontend": "nx build frontend",
-    "build:backend": "nx run-many --target=build --projects=tag:backend",
-    "test": "nx run-many --target=test --all",
-    "test:frontend": "nx test frontend",
-    "test:backend": "nx run-many --target=test --projects=tag:backend",
-    "lint": "nx run-many --target=lint --all",
-    "format": "nx format:write",
-    "format:check": "nx format:check",
+    "dev": "pnpm --filter zynema-frontend dev",
+    "dev:frontend": "pnpm --filter zynema-frontend dev",
+    "build": "pnpm --filter zynema-frontend build",
+    "build:frontend": "pnpm --filter zynema-frontend build",
+    "test": "pnpm --filter zynema-frontend test",
+    "test:frontend": "pnpm --filter zynema-frontend test",
+    "test:e2e": "pnpm --filter zynema-frontend test:e2e",
+    "lint": "pnpm --filter zynema-frontend lint && pnpm --filter @zynema/api-contracts type-check",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "graph": "nx graph",
     "reset": "nx reset",
     "prepare": "husky || true",
+    "api:generate": "pnpm --filter @zynema/api-contracts api:generate",
+    "api:refresh": "pnpm --filter @zynema/api-contracts api:refresh",
     "docker:up": "docker compose --profile core --profile auth up -d",
     "docker:up:full": "docker compose --profile core --profile auth --profile storage --profile observability up -d",
     "docker:down": "docker compose down",
@@ -32,16 +32,23 @@
     "docker:clean": "docker compose down -v"
   },
   "devDependencies": {
-    "@nx/maven": "^22.0.0",
-    "@nx/vite": "^22.0.0",
-    "@nx/react": "^22.0.0",
-    "@nx/js": "^22.0.0",
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
     "@nx/eslint": "^22.0.0",
+    "@nx/js": "^22.0.0",
+    "@nx/react": "^22.0.0",
+    "@nx/vite": "^22.0.0",
     "@nx/workspace": "^22.0.0",
+    "@semantic-release/changelog": "^7.0.0",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^11.0.1",
+    "@semantic-release/github": "^12.0.10",
+    "@semantic-release/release-notes-generator": "^14.1.1",
     "husky": "^9.1.7",
     "lint-staged": "^15.2.10",
     "nx": "^22.0.0",
     "prettier": "^3.3.3",
+    "semantic-release": "^25.0.9",
     "typescript": "~5.6.3"
   },
   "lint-staged": {
@@ -49,9 +56,6 @@
       "prettier --write"
     ],
     "*.{json,md,yml,yaml}": [
-      "prettier --write"
-    ],
-    "*.java": [
       "prettier --write"
     ]
   }

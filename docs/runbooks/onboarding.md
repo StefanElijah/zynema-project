@@ -5,14 +5,14 @@ stack in under 30 minutes.
 
 ## Prerequisites
 
-| Tool | Version | Why |
-|---|---|---|
+| Tool           | Version       | Why                          |
+| -------------- | ------------- | ---------------------------- |
 | Docker Desktop | 4.x with WSL2 | All backend services + infra |
-| pnpm | 9.15.x | Frontend deps |
-| Node | 20 LTS | Vite, scripts |
-| Java (JDK) | 21 (LTS) | Spring Boot |
-| Maven | 3.9.x | Multi-module build |
-| Git | 2.40+ | Source control |
+| pnpm           | 9.15.x        | Frontend deps                |
+| Node           | 20 LTS        | Vite, scripts                |
+| Java (JDK)     | 21 (LTS)      | Spring Boot                  |
+| Maven          | 3.9.x         | Multi-module build           |
+| Git            | 2.40+         | Source control               |
 
 > Windows: use PowerShell 7+ (pre-installed on Windows 11). On macOS/Linux,
 > any shell works.
@@ -56,13 +56,13 @@ Open <http://localhost:5173>.
 
 ### 5. Verify
 
-| Service | URL | What to check |
-|---|---|---|
-| Eureka | <http://localhost:8761> | All services registered |
-| API Gateway | <http://localhost:8080/actuator/health> | `UP` |
-| Frontend | <http://localhost:5173> | Zynema logo, home renders |
-| Keycloak | <http://localhost:8081> | Login with `admin` / your env password |
-| Grafana | <http://localhost:3000> | Datasources loaded |
+| Service     | URL                                     | What to check                          |
+| ----------- | --------------------------------------- | -------------------------------------- |
+| Eureka      | <http://localhost:8761>                 | All services registered                |
+| API Gateway | <http://localhost:8080/actuator/health> | `UP`                                   |
+| Frontend    | <http://localhost:5173>                 | Zynema logo, home renders              |
+| Keycloak    | <http://localhost:8180>                 | Login with `admin` / your env password |
+| Grafana     | <http://localhost:3000>                 | Datasources loaded                     |
 
 ## Common pitfalls
 

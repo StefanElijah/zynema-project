@@ -12,16 +12,137 @@
 
     <artifactId>zynema-common</artifactId>
     <name>zynema-common</name>
-    <description>Shared DTOs, exceptions, error responses, base classes</description>
+    <description>Shared DTOs, exceptions, error responses, auto-configured web infrastructure</description>
 
-    <dependencies>
+    <!--
+      Library module. It must NOT depend on any spring-boot-starter that pulls a servlet
+      container or a reactive stack, because it is consumed by BOTH MVC services
+      (catalog, user, ...) and WebFlux services (bff, api-gateway).
+      All web-stack-specific beans are registered conditionally via auto-configuration.
+    -->
+    <dependencies>        <!-- Message contracts: the envelope and topic names the messaging
+             support builds on (small, pure, no Spring). -->
+        <dependency>
+            <groupId>dev.zynema</groupId>
+            <artifactId>zynema-event-contracts</artifactId>
+        </dependency>
+
+        <!-- Spring web abstractions (WebRequest, ResponseEntity, annotations) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+
+        <!-- Auto-configuration support (@AutoConfiguration, @ConditionalOn*) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
         </dependency>
+
+        <!-- Reactive WebFilter support (optional: only needed by WebFlux services) -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+          Security infrastructure (optional). Brings spring-security-config, -web
+          (which also holds the reactive web.server classes) and
+          spring-security-oauth2-resource-server. Every service declares this
+          starter itself, so it never leaks transitively.
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- JSON for the 401/403 ApiError bodies (provided by every web service) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!--
+          Feign integration (optional). Services that call other services
+          declare the OpenFeign starter themselves; the interceptor and error
+          decoder here are registered by CommonFeignAutoConfiguration.
+        -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Tracing API only (the bridge/exporter live in the services) -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Maps an open circuit breaker to 503 in the shared handlers -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-circuitbreaker</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- Kafka messaging support (optional). Services that publish or consume
+             events include this plus the JSON Schema serializer, whose class
+             names the shared configuration refers to. -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.confluent</groupId>
+            <artifactId>kafka-json-schema-serializer</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!-- Idempotent consumers dedup through a JDBC store -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Servlet API for OncePerRequestFilter (provided by the container at runtime) -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- Validation API for DTO constraints -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- SLF4J for MDC (correlation ids) -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
+        <!-- Tests -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

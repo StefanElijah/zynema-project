@@ -24,16 +24,53 @@
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <spring-cloud.version>2024.0.0</spring-cloud.version>
-        <testcontainers.version>1.20.3</testcontainers.version>
-        <resilience4j.version>2.2.0</resilience4j.version>
+        <spring-cloud.version>2025.0.3</spring-cloud.version>
         <mapstruct.version>1.6.2</mapstruct.version>
-        <lombok.version>1.18.34</lombok.version>
-        <springdoc.version>2.7.0</springdoc.version>
-        <micrometer-tracing.version>1.4.0</micrometer-tracing.version>
-        <opentelemetry.version>1.43.0</opentelemetry.version>
-        <flyway.version>10.20.1</flyway.version>
+        <springdoc.version>2.8.14</springdoc.version>
+
+        <!--
+          Only the overrides that are still necessary live here:
+
+          * testcontainers: 1.21.4 is the first line that works with Docker
+            Engine 29 (minimum API 1.44). Boot 3.5.0 manages 1.21.0.
+          * springdoc: 2.8.15+ has a path-pattern regression with Spring
+            Framework 6.2 on WebFlux.
+
+          * aws-sdk-v2: Spring Boot does not manage it at all, so pinning is
+            the only way to get a version; bumped deliberately (see ADR-0020).
+
+          Everything else is managed by the Spring Boot BOM. In particular
+          micrometer-tracing, opentelemetry and flyway used to be pinned to
+          older versions here, which silently downgraded Boot's managed
+          versions (1.5.0 / 1.49.0 / 11.7.2) — see ADR-0020.
+
+          Lombok is also Boot-managed: declaring the version here would pin it
+          to whatever we wrote instead of the version Boot tests against.
+        -->
+        <testcontainers.version>1.21.4</testcontainers.version>
+        <awssdk.version>2.55.7</awssdk.version>
+        <!--
+          Confluent clients are not on Maven Central, so the repository below
+          exists for them (see ADR-0025). The version tracks the Schema
+          Registry image (confluentinc/cp-schema-registry:7.6.1) so serializer
+          and registry stay in step; it is bumped deliberately.
+        -->
+        <confluent.version>7.6.1</confluent.version>
     </properties>
+
+    <repositories>
+        <!-- Kafka Schema Registry clients (JSON Schema serialisers) -->
+        <repository>
+            <id>confluent</id>
+            <url>https://packages.confluent.io/maven/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
 
     <modules>
         <module>common</module>
@@ -48,6 +85,7 @@
         <module>playback-service</module>
         <module>bff-service</module>
         <module>notification-service</module>
+        <module>video-worker</module>
     </modules>
 
     <dependencyManagement>
@@ -70,6 +108,38 @@
                 <scope>import</scope>
             </dependency>
 
+            <!--
+              AWS SDK v2 BOM: not managed by Boot. Used by the video worker
+              (upload/download) and playback-service (presigned URLs).
+            -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${awssdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Kafka messaging (stage 7): common declares the support, each
+                 messaging service opts in by adding the serializer. -->
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-json-schema-serializer</artifactId>
+                <version>${confluent.version}</version>
+                <exclusions>
+                    <!-- Confluent 7.6 ships swagger-annotations 2.1.10, which
+                         shares the io.swagger.v3.oas.annotations package with
+                         springdoc's swagger-annotations-jakarta 2.2.x and wins
+                         the classpath race: springdoc then dies with
+                         NoSuchMethodError on Schema.requiredMode(). The
+                         serializer never touches those annotations. -->
+                    <exclusion>
+                        <groupId>io.swagger.core.v3</groupId>
+                        <artifactId>swagger-annotations</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
             <!-- Internal modules -->
             <dependency>
                 <groupId>dev.zynema</groupId>
@@ -85,11 +155,10 @@
     </dependencyManagement>
 
     <dependencies>
-        <!-- Lombok for boilerplate reduction -->
+        <!-- Lombok for boilerplate reduction (version from the Boot BOM) -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
             <scope>provided</scope>
         </dependency>
 
@@ -105,6 +174,34 @@
         <pluginManagement>
             <plugins>
                 <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <compilerArgs>
+                            <arg>-Xlint:deprecation</arg>
+                        </compilerArgs>
+                        <annotationProcessorPaths>
+                            <!-- Version omitted on purpose: resolved from the
+                                 dependency management of the project (the Boot
+                                 BOM manages Lombok). -->
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>0.2.0</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <configuration>
@@ -119,10 +216,30 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <!--
+                          Tests must not read from the Config Server: a developer
+                          running the stack locally would otherwise silently
+                          change what the tests exercise (the shared properties
+                          are applied only when a server answers on 8888).
+                          `spring.cloud.config.enabled=false` turns the client
+                          off regardless of the `optional:configserver:` import
+                          declared in application.yml; each test then builds its
+                          context from its own local configuration.
+                        -->
+                        <systemPropertyVariables>
+                            <spring.cloud.config.enabled>false</spring.cloud.config.enabled>
+                        </systemPropertyVariables>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <spring.cloud.config.enabled>false</spring.cloud.config.enabled>
+                        </systemPropertyVariables>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <groupId>org.jacoco</groupId>

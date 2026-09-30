@@ -1,4 +1,4 @@
-﻿spring:
+spring:
   application:
     name: notification-service
   jpa:
@@ -19,14 +19,23 @@
     password: ${POSTGRES_PASSWORD:devpassword}
     hikari:
       maximum-pool-size: 10
-      minimum-idle: 2  data:
+      minimum-idle: 2
+  data:
     redis:
       host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/zynema}  config:
+      port: ${REDIS_PORT:6379}
+  mail:
+    # MailHog in dev: it accepts anything and its API (8025) is where the
+    # end-to-end tests look for the delivered message.
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    properties:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+  # Security settings (issuer, JWKS, audience) are shared by every service
+  # and live in the config repository: see zynema.security.* in
+  # infra/config-repo/application.yml. Authorization rules live in SecurityConfig.
+  config:
     import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 server:
   port: 8087

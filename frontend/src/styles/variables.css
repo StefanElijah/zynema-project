@@ -32,5 +32,11 @@
 }
 
 /* Pequeñas utilidades */
-.u-center { display: flex; align-items: center; justify-content: center; }
-.hidden { display: none !important; }
+.u-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.hidden {
+  display: none !important;
+}

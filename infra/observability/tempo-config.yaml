@@ -30,5 +30,27 @@ metrics_generator:
   registry:
     external_labels:
       source: tempo
+  # Span metrics and the service graph leave Tempo as Prometheus series, so
+  # RED dashboards exist even for spans whose service has no HTTP metrics of
+  # its own. Prometheus runs with --web.enable-remote-write-receiver.
+  #
+  # Tempo 2.5 spells this `processor` (singular, enabled by presence); the
+  # `processors: [service-graphs, span-metrics]` list arrives in later 2.x.
+  processor:
+    service_graphs: {}
+    span_metrics: {}
   storage:
     path: /var/tempo/generator/wal
+    remote_write:
+      - url: http://prometheus:9090/api/v1/write
+        send_exemplars: true
+
+# The metrics-generator processors are disabled by default: the `processor`
+# block above configures them, this enables them for every tenant. Without
+# `overrides` Tempo happily runs the generator and produces nothing.
+overrides:
+  defaults:
+    metrics_generator:
+      processors:
+        - service-graphs
+        - span-metrics

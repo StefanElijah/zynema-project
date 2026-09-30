@@ -5,13 +5,13 @@ Zynema platform, in four levels of increasing detail.
 
 ## Levels
 
-| File | Level | Audience | Purpose |
-|---|---|---|---|
-| `01-context.md` | 1 — System Context | Everyone | What is Zynema and who uses it |
-| `02-containers.md` | 2 — Containers | Devs, ops | The high-level building blocks (apps, datastores) |
-| `03-components.md` | 3 — Components | Devs | What's inside each container |
-| `04-code.md` | 4 — Code | Devs | Class-level diagrams (selected hot paths) |
-| `diagrams/` | rendered | All | Mermaid source + PlantUML renderings |
+| File               | Level              | Audience  | Purpose                                           |
+| ------------------ | ------------------ | --------- | ------------------------------------------------- |
+| `01-context.md`    | 1 — System Context | Everyone  | What is Zynema and who uses it                    |
+| `02-containers.md` | 2 — Containers     | Devs, ops | The high-level building blocks (apps, datastores) |
+| `03-components.md` | 3 — Components     | Devs      | What's inside each container                      |
+| `04-code.md`       | 4 — Code           | Devs      | Class-level diagrams (selected hot paths)         |
+| `diagrams/`        | rendered           | All       | Mermaid source + PlantUML renderings              |
 
 ## Conventions
 

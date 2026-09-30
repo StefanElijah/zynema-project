@@ -1,0 +1,54 @@
+apiVersion: 1
+
+# Datasources are provisioned, never clicked: the uids are referenced by name
+# in the dashboards and in the cross-links below, so they are fixed.
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      timeInterval: 15s
+
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    jsonData:
+      # The shared log pattern prints [traceId,spanId]; this derived field
+      # turns the id into a link that opens the trace in Tempo.
+      derivedFields:
+        - name: trace_id
+          matcherType: regex
+          matcherRegex: '\[([a-f0-9]{32}),'
+          url: '$${__value.raw}'
+          datasourceUid: tempo
+
+  - name: Tempo
+    uid: tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    jsonData:
+      # And the other direction: a span links to the logs of its service.
+      # `service.name` (span resource) maps to the `service` label Promtail
+      # sets from the compose service name.
+      tracesToLogs:
+        datasourceUid: loki
+        tags:
+          - key: service.name
+            value: service
+        mappedTags:
+          - key: service.name
+            value: service
+        spanStartTimeShift: -2m
+        spanEndTimeShift: 2m
+        filterByTraceID: true
+        filterBySpanID: false
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true

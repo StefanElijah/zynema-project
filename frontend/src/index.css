@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "./styles/variables.css";
+@import 'tailwindcss';
+@import './styles/variables.css';
 
 /* Base global */
 @layer base {
@@ -7,20 +7,30 @@
     margin: 0;
     background-color: var(--color-bg, #0b0b0b);
     color: var(--text-primary, #f5f5f5);
-    font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-      Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    font-family:
+      Inter,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
+      Roboto,
+      Oxygen,
+      Ubuntu,
+      Cantarell,
+      'Fira Sans',
+      'Droid Sans',
+      'Helvetica Neue',
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  html, body {
+  html,
+  body {
     overflow-x: hidden;
   }
 
   code {
-    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-      monospace;
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
   }
 
   img {

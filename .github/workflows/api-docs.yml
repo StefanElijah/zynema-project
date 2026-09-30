@@ -1,0 +1,132 @@
+name: API docs
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'libs/api-contracts/openapi.json'
+      - '.github/workflows/api-docs.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+
+jobs:
+  spec:
+    name: ${{ matrix.module }} spec
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { module: api-gateway, port: 8080, db: '' }
+          - { module: user-service, port: 8081, db: zynema_user }
+          - { module: auth-service, port: 8082, db: zynema_auth }
+          - { module: catalog-service, port: 8083, db: zynema_catalog }
+          - { module: payment-service, port: 8084, db: zynema_payment }
+          - { module: playback-service, port: 8085, db: zynema_playback }
+          - { module: bff-service, port: 8086, db: '' }
+          - { module: notification-service, port: 8087, db: zynema_notification }
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: zynema
+          POSTGRES_PASSWORD: devpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zynema"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Create the service databases
+        if: matrix.db != ''
+        run: |
+          for db in zynema_user zynema_auth zynema_catalog zynema_payment zynema_playback zynema_notification; do
+            docker run --rm --network host -e PGPASSWORD=devpassword postgres:16-alpine \
+              psql -h localhost -U zynema -d postgres -c "CREATE DATABASE $db" > /dev/null || true
+          done
+
+      - name: Build the module
+        working-directory: backend
+        run: mvn -B -ntp -pl ${{ matrix.module }} -am -DskipTests package
+
+      # The document is served by the running app; booting it with the config
+      # server and Eureka off is the same trick the BFF snapshot uses locally.
+      - name: Boot the service and capture /v3/api-docs
+        run: |
+          set -e
+          module=${{ matrix.module }}
+          mkdir -p openapi
+          extra=()
+          if [ -n "${{ matrix.db }}" ]; then
+            extra=(--spring.datasource.url="jdbc:postgresql://localhost:5432/${{ matrix.db }}"
+                   --spring.datasource.username=zynema
+                   --spring.datasource.password=devpassword)
+          fi
+          java -jar "backend/$module/target/zynema-$module.jar" \
+            --spring.cloud.config.enabled=false \
+            --eureka.client.enabled=false \
+            --spring.cloud.discovery.enabled=false \
+            --spring.kafka.bootstrap-servers=localhost:1 \
+            --spring.kafka.listener.auto-startup=false \
+            --spring.cloud.gateway.server.webflux.discovery.locator.enabled=false \
+            --server.port=${{ matrix.port }} \
+            "${extra[@]}" > "/tmp/$module.log" 2>&1 &
+          pid=$!
+          for _ in $(seq 1 60); do
+            if curl -fsS "http://localhost:${{ matrix.port }}/v3/api-docs" -o "openapi/$module.json"; then
+              break
+            fi
+            sleep 2
+          done
+          kill "$pid" 2>/dev/null || true
+          if [ ! -s "openapi/$module.json" ]; then
+            echo "::error::$module never served its spec"
+            tail -80 "/tmp/$module.log"
+            exit 1
+          fi
+          python3 -c "import json; d=json.load(open('openapi/$module.json')); print('$module:', len(d.get('paths', {})), 'paths')"
+
+      - name: Upload spec
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-${{ matrix.module }}
+          path: openapi/${{ matrix.module }}.json
+
+      # The SPA codes against the snapshot: if the live BFF document moved on,
+      # the generated client is stale and someone skipped `pnpm api:refresh`.
+      - name: Check the SPA contract snapshot
+        if: matrix.module == 'bff-service'
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          live = json.load(open('openapi/bff-service.json'))
+          snapshot = json.load(open('libs/api-contracts/openapi.json'))
+          if json.dumps(live, sort_keys=True) != json.dumps(snapshot, sort_keys=True):
+              sys.exit('libs/api-contracts/openapi.json is stale: run pnpm api:refresh && pnpm api:generate and commit the result')
+          print('contract snapshot matches the live BFF document')
+          PY

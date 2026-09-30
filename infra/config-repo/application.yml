@@ -1,8 +1,16 @@
-# Shared defaults for ALL Zynema services
+# ══════════════════════════════════════════════════════════════════════
+# Shared defaults for ALL Zynema services (served by config-server).
+#
+# RULES for this file:
+#  1. NEVER put `spring.application.name` here: it is per-service and must
+#     come from each service's own application.yml.
+#  2. NEVER put `spring.config.import: configserver:...` here: the config
+#     server would try to import from itself while serving a request and
+#     deadlock. The import lives in each service's local application.yml.
+#  3. Only put properties that are truly identical across services.
+# ══════════════════════════════════════════════════════════════════════
 
 spring:
-  application:
-    name: zynema
   jpa:
     open-in-view: false
     properties:
@@ -15,8 +23,6 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-  config:
-    import: optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}
 
 eureka:
   client:
@@ -27,22 +33,105 @@ eureka:
     lease-renewal-interval-in-seconds: 10
     lease-expiration-duration-in-seconds: 30
 
+# ── Security (identical in every service, hence shared) ──────────────────
+# Issuer is the public URL that ends up in the `iss` claim and is what the
+# browser uses. JWKS may live at a different, internal URL (ADR-0015).
+# Both fall back to the local Keycloak when these are not set.
+zynema:
+  # Which coordination style drives the subscription onboarding (ADR-0007):
+  # `choreographed` reacts to SubscriptionCreated, `orchestrated` runs the
+  # explicit saga in payment-service. Both are implemented; this switch decides
+  # who acts, so the flow is never driven twice (ADR-0029).
+  saga:
+    mode: ${ZYNEMA_SAGA_MODE:choreographed}
+  # The outbox relay polls the producer's own table (ADR-0008); the
+  # tuning lives here so every producer behaves the same.
+  messaging:
+    outbox:
+      poll-interval: 2s
+      batch-size: 100
+  security:
+    issuer-uri: ${ZYNEMA_SECURITY_ISSUER_URI:http://localhost:8180/realms/zynema}
+    jwk-set-uri: ${ZYNEMA_SECURITY_JWK_SET_URI:http://localhost:8180/realms/zynema/protocol/openid-connect/certs}
+    audience: ${ZYNEMA_SECURITY_AUDIENCE:zynema-api}
+
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus,circuitbreakers,circuitbreakerevents
   endpoint:
     health:
       show-details: when-authorized
       probes:
         enabled: true
+      group:
+        # Liveness answers "is the process alive": nothing but the app itself.
+        # A database outage must never make an orchestrator restart a service.
+        liveness:
+          include: ping
+        # Readiness answers "can this instance serve traffic": the stateful
+        # dependencies it needs to do its job.
+        #
+        # Only contributors that exist in EVERY consumer belong here — Boot
+        # refuses to start when a group includes an unknown one. Services with a
+        # database add `db` in their own <service-name>.yml file.
+        readiness:
+          include: redis
+          show-details: never
+  # ── Distributed tracing ────────────────────────────────────────────────
   tracing:
+    # 100% in development. A real deployment samples (e.g. 0.1) and uses
+    # tail-based sampling in the collector.
     sampling:
-      probability: 1.0
+      probability: ${TRACING_SAMPLING_PROBABILITY:1.0}
   otlp:
     tracing:
-      endpoint: http://tempo:4318
+      # OTLP/HTTP. The signal path is REQUIRED: unlike the OTLP base endpoint,
+      # this property is used verbatim and the exporter does not append
+      # /v1/traces — Tempo answers 404 without it.
+      #
+      # LITERAL value on purpose: this property is read verbatim by the
+      # exporter, so a ${placeholder} served by the config server would be
+      # passed through unresolved and tracing would silently do nothing.
+      # Containers override it with MANAGEMENT_OTLP_TRACING_ENDPOINT
+      # (see docker-compose.yml), which binds with higher precedence.
+      endpoint: http://localhost:4318/v1/traces
+      protocol: http/protobuf
+
+  # ── Kafka messaging (Fase 7, ADR-0025) ─────────────────────────────────
+  # Only the services that include spring-kafka use these; everyone else
+  # ignores them. Containers override the addresses with the in-network names.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer
+      # acks=all + idempotence: a relay only marks an outbox row published when
+      # the broker confirmed it, and a retry cannot produce a duplicate.
+      acks: all
+      properties:
+        enable.idempotence: true
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8088}
+        auto.register.schemas: true
+        # One subject per record type, not per topic: the four topics carry
+        # several event types each, and each one gets its own schema.
+        value.subject.name.strategy: io.confluent.kafka.serializers.subject.TopicRecordNameStrategy
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: io.confluent.kafka.serializers.json.KafkaJsonSchemaDeserializer
+      auto-offset-reset: earliest
+      properties:
+        schema.registry.url: ${SCHEMA_REGISTRY_URL:http://localhost:8088}
+        # Each listener declares its domain as json.value.type (for example
+        # dev.zynema.events.PaymentEvent) through @KafkaListener(properties):
+        # the payload is the message value, and Jackson resolves the concrete
+        # record from its discriminator. A single global value cannot serve
+        # topics that carry different domains.
+    # Retries with backoff, then the dead-letter topic (<topic>-dlt). A message
+    # that keeps failing is a bug or a poison pill, and neither should block
+    # the partition forever.
+    retry:
+      topic:
+        attempts: 4
+        max-delay: 10s
+        multiplier: 2
 
 resilience4j:
   circuitbreaker:
@@ -53,3 +142,11 @@ resilience4j:
         failureRateThreshold: 50
         waitDurationInOpenState: 10s
         permittedNumberOfCallsInHalfOpenState: 3
+
+# ── Logs ─────────────────────────────────────────────────────────────────
+# Trace and span ids are already in the MDC (Micrometer tracing); printing
+# them is what turns a log line into something Grafana can click through: the
+# Loki datasource parses this pattern into a Tempo link (ADR-0031).
+logging:
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n'

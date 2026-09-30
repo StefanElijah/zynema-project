@@ -1,0 +1,1295 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Zynema Web BFF API",
+    "description": "Aggregated views for the single-page application.\n\nThe SPA talks only to `/api/v1/web/**`. Each endpoint composes the\ndomain services so a screen is one round trip:\n\n- `GET /home` — landing page (public)\n- `GET /catalog/{idOrSlug}` — detail plus playback context (public)\n- `GET /account` — identity, account, subscription\n- `GET /profiles/{profileId}/home` — continue watching and my list\n\nOptional sections that could not be composed are reported in\n`degraded` instead of failing the whole screen.\n",
+    "contact": {
+      "name": "Zynema"
+    },
+    "license": {
+      "name": "Private"
+    },
+    "version": "v1"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8086",
+      "description": "Generated server url"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Web BFF",
+      "description": "Aggregated views for the SPA"
+    }
+  ],
+  "paths": {
+    "/api/v1/web/playback/sessions/{sessionId}/position": {
+      "put": {
+        "tags": ["Web BFF"],
+        "summary": "Heartbeat: record the position the player is at",
+        "operationId": "heartbeat",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/subscriptions": {
+      "post": {
+        "tags": ["Web BFF"],
+        "summary": "Subscribe the account to a plan",
+        "description": "Requires an Idempotency-Key; 409 when the account already has an active subscription",
+        "operationId": "subscribe",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "Client-generated key that makes the retry safe: the same key returns the original answer",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscribeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Subscription"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/profiles": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Profiles of the signed-in account",
+        "operationId": "profiles",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Profile"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Web BFF"],
+        "summary": "Create a profile",
+        "operationId": "createProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Profile"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/profiles/{profileId}/watchlist": {
+      "post": {
+        "tags": ["Web BFF"],
+        "summary": "Add a title to the profile's list",
+        "operationId": "addToWatchlist",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchlistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/WatchlistAdded"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/playback/sessions": {
+      "post": {
+        "tags": ["Web BFF"],
+        "summary": "Start (or resume) a playback session",
+        "description": "402 when the account has no active plan, 422 when the plan's stream limit is reached",
+        "operationId": "start",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/playback/sessions/{sessionId}/end": {
+      "post": {
+        "tags": ["Web BFF"],
+        "summary": "Close a session with the final position",
+        "operationId": "end",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PositionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/profiles/{profileId}/home": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Continue watching and my list for one profile, joined with the catalogue",
+        "operationId": "profileHome",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileHomeView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/playback/sessions/me/active": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Open sessions of the account, newest first",
+        "operationId": "active",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Session"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/plans": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Active plans, cheapest first",
+        "operationId": "plans",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Plan"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/home": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Hero and rails for the landing screen",
+        "operationId": "home",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/catalog": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Browse the catalogue with the caller's filters",
+        "operationId": "browse",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["MOVIE", "SERIES"]
+            }
+          },
+          {
+            "name": "genre",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "yearFrom",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "yearTo",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "minRating",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "popularity,desc"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 24
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownstreamPageTitleCard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/catalog/{idOrSlug}": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Content detail plus the caller's playback context, when there is one",
+        "operationId": "content",
+        "parameters": [
+          {
+            "name": "idOrSlug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profileId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/catalog/search": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Search titles by name",
+        "operationId": "search",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 24
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownstreamPageTitleCard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/account": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "Identity, local account and subscription in one view",
+        "operationId": "account",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/profiles/{profileId}": {
+      "delete": {
+        "tags": ["Web BFF"],
+        "summary": "Delete a profile",
+        "operationId": "deleteProfile",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
+    "/api/v1/web/profiles/{profileId}/watchlist/{contentId}": {
+      "delete": {
+        "tags": ["Web BFF"],
+        "summary": "Remove a title from the profile's list",
+        "operationId": "removeFromWatchlist",
+        "parameters": [
+          {
+            "name": "profileId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "contentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "PositionRequest": {
+        "type": "object",
+        "properties": {
+          "positionSeconds": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        },
+        "required": ["positionSeconds"]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentTitle": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "positionSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "device": {
+            "type": "string"
+          },
+          "streamPath": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "SubscribeRequest": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          }
+        },
+        "required": ["planId"]
+      },
+      "Plan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "price": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string"
+          },
+          "maxStreams": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxQuality": {
+            "type": "string"
+          }
+        }
+      },
+      "Subscription": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/Plan"
+          },
+          "status": {
+            "type": "string"
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelAtPeriodEnd": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ProfileRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 0
+          },
+          "avatarKey": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 0
+          },
+          "kids": {
+            "type": "boolean"
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 0
+          }
+        },
+        "required": ["name"]
+      },
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kids": {
+            "type": "boolean"
+          },
+          "language": {
+            "type": "string"
+          }
+        }
+      },
+      "WatchlistRequest": {
+        "type": "object",
+        "properties": {
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": ["contentId"]
+      },
+      "WatchlistAdded": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "StartRequest": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "contentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "device": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 0
+          }
+        },
+        "required": ["contentId", "profileId"]
+      },
+      "ContinueWatching": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/TitleCard"
+          },
+          "positionSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "lastWatchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "GenreRef": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ProfileHomeView": {
+        "type": "object",
+        "properties": {
+          "profileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "continueWatching": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ContinueWatching"
+            }
+          },
+          "myList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Watchlist"
+            }
+          },
+          "degraded": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["CONTINUE_WATCHING", "MY_LIST", "SUBSCRIPTION", "PLAYBACK"]
+            }
+          }
+        }
+      },
+      "TitleCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["MOVIE", "SERIES"]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "posterUrl": {
+            "type": "string"
+          },
+          "backdropUrl": {
+            "type": "string"
+          },
+          "releaseYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maturityRating": {
+            "type": "string"
+          },
+          "averageRating": {
+            "type": "number"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenreRef"
+            }
+          }
+        }
+      },
+      "Watchlist": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/TitleCard"
+          },
+          "addedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Hero": {
+        "type": "object",
+        "properties": {
+          "card": {
+            "$ref": "#/components/schemas/TitleCard"
+          },
+          "synopsis": {
+            "type": "string"
+          },
+          "tagline": {
+            "type": "string"
+          }
+        }
+      },
+      "HomeView": {
+        "type": "object",
+        "properties": {
+          "hero": {
+            "$ref": "#/components/schemas/Hero"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Row"
+            }
+          }
+        }
+      },
+      "Row": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TitleCard"
+            }
+          }
+        }
+      },
+      "DownstreamPageTitleCard": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TitleCard"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalElements": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "first": {
+            "type": "boolean"
+          },
+          "last": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ContentView": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "$ref": "#/components/schemas/Detail"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/PlaybackAvailability"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/Progress"
+          },
+          "degraded": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["CONTINUE_WATCHING", "MY_LIST", "SUBSCRIPTION", "PLAYBACK"]
+            }
+          }
+        }
+      },
+      "Credit": {
+        "type": "object",
+        "properties": {
+          "personName": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "characterName": {
+            "type": "string"
+          }
+        }
+      },
+      "Detail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["MOVIE", "SERIES"]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "originalTitle": {
+            "type": "string"
+          },
+          "synopsis": {
+            "type": "string"
+          },
+          "tagline": {
+            "type": "string"
+          },
+          "releaseYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maturityRating": {
+            "type": "string"
+          },
+          "runtimeMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "posterUrl": {
+            "type": "string"
+          },
+          "backdropUrl": {
+            "type": "string"
+          },
+          "trailerUrl": {
+            "type": "string"
+          },
+          "averageRating": {
+            "type": "number"
+          },
+          "popularity": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenreRef"
+            }
+          },
+          "seasons": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Season"
+            }
+          },
+          "credits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Credit"
+            }
+          }
+        }
+      },
+      "PlaybackAvailability": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "enum": ["AUTHENTICATION_REQUIRED", "SUBSCRIPTION_REQUIRED", "UNAVAILABLE"]
+          }
+        }
+      },
+      "Progress": {
+        "type": "object",
+        "properties": {
+          "positionSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationSeconds": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "completed": {
+            "type": "boolean"
+          },
+          "lastWatchedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "episodeId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "Season": {
+        "type": "object",
+        "properties": {
+          "seasonNumber": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "title": {
+            "type": "string"
+          },
+          "releaseYear": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "episodeCount": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AccountView": {
+        "type": "object",
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/Identity"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/Subscription"
+          },
+          "entitlements": {
+            "$ref": "#/components/schemas/Entitlements"
+          },
+          "degraded": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["CONTINUE_WATCHING", "MY_LIST", "SUBSCRIPTION", "PLAYBACK"]
+            }
+          }
+        }
+      },
+      "Entitlements": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "maxStreams": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxQuality": {
+            "type": "string"
+          },
+          "planCode": {
+            "type": "string"
+          },
+          "validUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Identity": {
+        "type": "object",
+        "properties": {
+          "subject": {
+            "type": "string"
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "fullName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "preferredLanguage": {
+            "type": "string"
+          },
+          "profiles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Profile"
+            }
+          }
+        }
+      }
+    }
+  }
+}

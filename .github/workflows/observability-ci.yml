@@ -12,6 +12,10 @@ on:
     branches: [main, develop]
     paths:
       - 'infra/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.override.yml'
+      - '.env.example'
+      - '.github/workflows/observability-ci.yml'
 
 jobs:
   validate-compose:
@@ -19,6 +23,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The compose file is meant to be used with .env (make env does this);
+      # on a fresh runner the interpolation sources are missing and validation
+      # fails for the wrong reason.
+      - name: Prepare environment file
+        run: cp .env.example .env
       - name: Validate base compose
         run: docker compose config -q
       - name: Validate core profile
@@ -36,13 +45,51 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Validate Prometheus
-        run: docker run --rm -v "${{ github.workspace }}/infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro" prom/prometheus:latest promtool check config /etc/prometheus/prometheus.yml
+        run: >-
+          docker run --rm --entrypoint promtool
+          -v "${{ github.workspace }}/infra/observability:/etc/prometheus:ro"
+          prom/prometheus:latest check config /etc/prometheus/prometheus.yml
+      - name: Validate Prometheus alert rules
+        run: >-
+          docker run --rm --entrypoint promtool
+          -v "${{ github.workspace }}/infra/observability:/etc/prometheus:ro"
+          prom/prometheus:latest check rules /etc/prometheus/prometheus-rules.yml
+      - name: Validate file_sd targets JSON
+        run: |
+          python3 -c "import json; json.load(open('infra/observability/targets/zynema.json'))" && echo "Valid JSON"
+      - name: Validate Alertmanager
+        run: >-
+          docker run --rm --entrypoint amtool
+          -v "${{ github.workspace }}/infra/observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro"
+          prom/alertmanager:latest check-config /etc/alertmanager/alertmanager.yml
+      - name: Validate Grafana provisioning and dashboards
+        run: |
+          python3 - <<'PY'
+          import glob, json, yaml
+          for path in glob.glob('infra/observability/grafana-provisioning/**/*.yml', recursive=True):
+              yaml.safe_load(open(path))
+              print('ok', path)
+          for path in glob.glob('infra/observability/grafana-dashboards/*.json'):
+              json.load(open(path))
+              print('ok', path)
+          PY
       - name: Validate Loki
-        run: docker run --rm -v "${{ github.workspace }}/infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro" grafana/loki:2.9.8 -config.file=/etc/loki/local-config.yaml -verify-config
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}/infra/observability/loki-config.yaml:/etc/loki/local-config.yaml:ro"
+          grafana/loki:2.9.8 --config.file=/etc/loki/local-config.yaml --verify-config
       - name: Validate Tempo
-        run: docker run --rm -v "${{ github.workspace }}/infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro" grafana/tempo:2.5.0 -config.file=/etc/tempo.yaml -verify-config
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}/infra/observability/tempo-config.yaml:/etc/tempo.yaml:ro"
+          grafana/tempo:2.5.0 --config.file=/etc/tempo.yaml --config.verify=true
       - name: Validate nginx HLS
-        run: docker run --rm -v "${{ github.workspace }}/infra/nginx/hls.conf:/etc/nginx/conf.d/default.conf:ro" nginx:1.27-alpine nginx -t
+        # nginx resolves proxy_pass upstreams at config-test time; the MinIO
+        # host does not exist on the runner, so give it one to resolve.
+        run: >-
+          docker run --rm --add-host minio:127.0.0.1
+          -v "${{ github.workspace }}/infra/nginx/hls.conf:/etc/nginx/conf.d/default.conf:ro"
+          nginx:1.27-alpine nginx -t
 
   validate-keycloak:
     name: Validate Keycloak realm JSON
@@ -58,11 +105,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-      - name: Validate k8s YAML
-        run: |
-          for f in $(find infra/k8s -name '*.yaml'); do
-            echo "Validating $f"
-            kubectl apply --dry-run=client -f "$f" || exit 1
-          done
+      # kubeconform validates against upstream schemas and needs no cluster;
+      # `kubectl apply --dry-run=client` still fetches the server's OpenAPI
+      # schema and fails without one.
+      - name: Validate k8s YAML (kubeconform)
+        run: >-
+          docker run --rm
+          -v "${{ github.workspace }}/infra/k8s:/manifests:ro"
+          ghcr.io/yannh/kubeconform:latest -strict -summary /manifests

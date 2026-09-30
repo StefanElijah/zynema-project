@@ -1,6 +1,6 @@
 # Zynema
 
-> Production-grade streaming platform simulation, locally runnable. Netflix-style microservice architecture with the same pieces you'd use in real production — only *where* they live changes, not *what* they are.
+> Production-grade streaming platform simulation, locally runnable. Netflix-style microservice architecture with the same pieces you'd use in real production — only _where_ they live changes, not _what_ they are.
 
 ---
 
@@ -79,33 +79,33 @@ Read the full design in [`docs/architecture/`](docs/architecture/) and decision 
 
 ## Tech stack
 
-| Layer | Tech | Why |
-|---|---|---|
-| **Frontend** | Vite · React 18 · TypeScript | CRA is deprecated, Vite is the modern standard |
-| **State (server)** | TanStack Query | Async cache, revalidation, no Redux boilerplate |
-| **State (client)** | Zustand | Lightweight UI state |
-| **Styling** | Tailwind CSS · shadcn/ui | Utility-first + accessible components |
-| **Forms** | React Hook Form · Zod | Type-safe validation |
-| **API client** | Auto-generated from OpenAPI | Contract-first, no drift |
-| **Video** | hls.js | Native HLS playback in browser |
-| **Backend** | Java 21 · Spring Boot 3.5.x | Industry standard for microservicios |
-| **Discovery** | Netflix Eureka | Service registry |
-| **Config** | Spring Cloud Config Server | External, versioned config in Git |
-| **Gateway** | Spring Cloud Gateway | Reactive routing + filters |
-| **HTTP clients** | OpenFeign (sync) · WebClient (BFF) | Declarative + reactive |
-| **Resilience** | Resilience4j | Circuit breaker, retry, bulkhead, ratelimit |
-| **Auth** | Keycloak (OIDC) · Spring Security | Real IdP, OAuth2 + JWT |
-| **Database** | PostgreSQL · Spring Data JPA · Flyway | Per-service databases, versioned migrations |
-| **Cache** | Redis | Sessions, rate limit, hot data |
-| **Messaging** | Apache Kafka (KRaft) · Spring Kafka | Event-driven, no Zookeeper |
-| **Schemas** | JSON Schema (Avro-ready) | Event contracts, evolution |
-| **Patterns** | Saga · Outbox · CQRS · Event Sourcing | Distributed transaction patterns |
-| **Observability** | Micrometer · Prometheus · Grafana · Loki · Tempo · OpenTelemetry | Full PLG+T stack |
-| **Video pipeline** | FFmpeg · MinIO · Nginx | Transcode, store, serve HLS |
-| **CI/CD** | GitHub Actions | Path-filtered per stack |
-| **Quality** | JaCoCo · SonarQube Cloud | Coverage, code smells, vulnerabilities |
-| **Monorepo** | Nx · pnpm workspaces | Multi-stack task graph |
-| **Container** | Docker Compose (profiles) | Local production simulation |
+| Layer              | Tech                                                             | Why                                             |
+| ------------------ | ---------------------------------------------------------------- | ----------------------------------------------- |
+| **Frontend**       | Vite · React 18 · TypeScript                                     | CRA is deprecated, Vite is the modern standard  |
+| **State (server)** | TanStack Query                                                   | Async cache, revalidation, no Redux boilerplate |
+| **State (client)** | Zustand                                                          | Lightweight UI state                            |
+| **Styling**        | Tailwind CSS · shadcn/ui                                         | Utility-first + accessible components           |
+| **Forms**          | React Hook Form · Zod                                            | Type-safe validation                            |
+| **API client**     | Auto-generated from OpenAPI                                      | Contract-first, no drift                        |
+| **Video**          | hls.js                                                           | Native HLS playback in browser                  |
+| **Backend**        | Java 21 · Spring Boot 3.5.x                                      | Industry standard for microservicios            |
+| **Discovery**      | Netflix Eureka                                                   | Service registry                                |
+| **Config**         | Spring Cloud Config Server                                       | External, versioned config in Git               |
+| **Gateway**        | Spring Cloud Gateway                                             | Reactive routing + filters                      |
+| **HTTP clients**   | OpenFeign (sync) · WebClient (BFF)                               | Declarative + reactive                          |
+| **Resilience**     | Resilience4j                                                     | Circuit breaker, retry, bulkhead, ratelimit     |
+| **Auth**           | Keycloak (OIDC) · Spring Security                                | Real IdP, OAuth2 + JWT                          |
+| **Database**       | PostgreSQL · Spring Data JPA · Flyway                            | Per-service databases, versioned migrations     |
+| **Cache**          | Redis                                                            | Sessions, rate limit, hot data                  |
+| **Messaging**      | Apache Kafka (KRaft) · Spring Kafka                              | Event-driven, no Zookeeper                      |
+| **Schemas**        | JSON Schema (Avro-ready)                                         | Event contracts, evolution                      |
+| **Patterns**       | Saga · Outbox · CQRS · Event Sourcing                            | Distributed transaction patterns                |
+| **Observability**  | Micrometer · Prometheus · Grafana · Loki · Tempo · OpenTelemetry | Full PLG+T stack                                |
+| **Video pipeline** | FFmpeg · MinIO · Nginx                                           | Transcode, store, serve HLS                     |
+| **CI/CD**          | GitHub Actions                                                   | Path-filtered per stack                         |
+| **Quality**        | JaCoCo · SonarQube Cloud                                         | Coverage, code smells, vulnerabilities          |
+| **Monorepo**       | Nx · pnpm workspaces                                             | Multi-stack task graph                          |
+| **Container**      | Docker Compose (profiles)                                        | Local production simulation                     |
 
 ---
 
@@ -161,13 +161,13 @@ Read the full design in [`docs/architecture/`](docs/architecture/) and decision 
 
 ### Prerequisites
 
-| Tool | Version | Check |
-|---|---|---|
-| Node.js | 20+ | `node --version` |
-| pnpm | 9+ | `pnpm --version` |
-| Java | 21 | `java --version` |
-| Maven | 3.9+ | `mvn --version` |
-| Docker Desktop | 4.x+ | `docker --version` |
+| Tool           | Version | Check              |
+| -------------- | ------- | ------------------ |
+| Node.js        | 20+     | `node --version`   |
+| pnpm           | 9+      | `pnpm --version`   |
+| Java           | 21      | `java --version`   |
+| Maven          | 3.9+    | `mvn --version`    |
+| Docker Desktop | 4.x+    | `docker --version` |
 
 > macOS / Linux users can use [SDKMAN](https://sdkman.io/) to install Java and Maven. The `.sdkmanrc` pins the versions used by this project.
 
@@ -196,7 +196,7 @@ make up          # core + auth
 
 # 7. Open dashboards
 # Eureka:    http://localhost:8761
-# Keycloak:  http://localhost:8081  (admin / $KEYCLOAK_ADMIN_PASSWORD)
+# Keycloak:  http://localhost:8180  (admin / $KEYCLOAK_ADMIN_PASSWORD)
 ```
 
 ### Optional profiles
@@ -204,6 +204,122 @@ make up          # core + auth
 ```bash
 make up-full      # core + auth + storage + observability (~5GB RAM)
 ```
+
+### What is already in the database
+
+Flyway seeds the catalog and one demo account on first boot, so the API is
+usable immediately:
+
+| Data                               | Count                                   |
+| ---------------------------------- | --------------------------------------- |
+| Genres                             | 15                                      |
+| Titles (28 movies + 24 series)     | 52                                      |
+| People / credits                   | 72 / 80                                 |
+| Seasons / episodes                 | 80 / 48                                 |
+| Seeded account (`demo@zynema.dev`) | 1 user, 2 profiles, watchlist + history |
+
+The 25 titles that ship with local artwork under `frontend/public/assets/`
+carry real poster/backdrop paths; the rest have `null` assets on purpose, which
+exercises the frontend's fallback handling.
+
+## Authentication
+
+Keycloak is the identity provider from the first commit (ADR-0002). The realm
+is versioned at `infra/keycloak/realm-export/zynema-realm.json` and imported on
+container start, so `docker compose --profile core --profile auth up -d` gives
+you a working IdP plus three users.
+
+| User      | Password  | Realm roles               | Use                                          |
+| --------- | --------- | ------------------------- | -------------------------------------------- |
+| `demo`    | `demo`    | `user`                    | Default viewer, linked to the seeded account |
+| `manager` | `manager` | `user`, `content-manager` | Can manage the catalog                       |
+| `admin`   | `admin`   | `user`, `admin`           | Full access, including user administration   |
+
+> Dev credentials. They exist only in the exported realm; a real deployment
+> provisions users through the IdP and never ships passwords in a repository.
+
+**How a request is authenticated**
+
+1. The SPA (public client, authorization code + PKCE) obtains tokens from
+   Keycloak at `http://localhost:8180/realms/zynema`.
+2. It sends the access token to the gateway as `Authorization: Bearer …`.
+3. The gateway validates the token and enforces route rules.
+4. Each service validates the token again and applies its own rules — a request
+   that bypasses the gateway is not trusted.
+
+**Authorization matrix**
+
+| Endpoint                                                      | Rule                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `GET /api/v1/catalog/**`                                      | anonymous                                                           |
+| `/api/v1/catalog/admin/**`                                    | role `content-manager` or `admin`                                   |
+| `/api/v1/auth/public/**`                                      | anonymous                                                           |
+| `/api/v1/auth/me`                                             | authenticated                                                       |
+| `/api/v1/users/me`, `/api/v1/users/me/**`                     | authenticated (identity from the token)                             |
+| `/api/v1/users/**` (id-addressed)                             | role `admin`                                                        |
+| `/api/v1/web/home`, `/api/v1/web/catalog/**` (BFF reads)      | public                                                              |
+| `/api/v1/web/account`, `/api/v1/web/profiles/**` (BFF)        | authenticated                                                       |
+| `GET /api/v1/playback/stream/**` (HLS manifests)              | authenticated + session ownership                                   |
+| `/api/v1/playback/**`                                         | authenticated; watching also needs an active plan (`402` otherwise) |
+| `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**` | anonymous                                                           |
+
+Errors use the same `ApiError` envelope as the rest of the API: a missing token
+is `401`, a valid token without the required role is `403`, and a signed-in
+account without an active plan gets `402` when it tries to watch something.
+
+**Watching a title (Fase 6)**
+
+```bash
+# 1. Put videos in the source bucket (Creative-Commons clips, or synthetic ones)
+make up-storage fetch-samples
+
+# 2. Transcode the demo movie and one Arcane episode into HLS
+make transcode
+
+# 3. From the app: /watch/dune-part-two (the player starts a session and plays)
+#    By hand: start a session, then follow its streamPath
+curl -X POST localhost:8080/api/v1/playback/sessions \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"profileId":"<profile-id>","contentId":"<content-id>","device":"curl"}'
+```
+
+Segments are presigned for 60 seconds and served by the nginx edge
+(`http://localhost:8090/minio/...`); manifests require the token and session
+ownership (ADR-0024).
+
+### Getting a token for manual testing
+
+```bash
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/zynema/protocol/openid-connect/token \
+  -d grant_type=password \
+  -d client_id=zynema-cli -d client_secret=zynema-cli-dev-secret \
+  -d username=demo -d password=demo \
+  -d scope="openid profile email" | jq -r .access_token)
+```
+
+### Verifying the stack end to end
+
+```bash
+# Public reads through the gateway (anonymous)
+curl "http://localhost:8080/api/v1/catalog/movies?size=3"
+curl "http://localhost:8080/api/v1/catalog/series/arcane"
+curl "http://localhost:8080/api/v1/catalog/series/arcane/seasons/1/episodes"
+curl "http://localhost:8080/api/v1/catalog/search?q=dune"
+
+# Identity-required calls
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/users/me"
+curl -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/auth/me"
+
+# Role-gated write (needs a manager or admin token)
+curl -X POST -H "Authorization: Bearer $MANAGER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"type":"MOVIE","title":"Example","slug":"example","genreSlugs":["drama"]}' \
+  "http://localhost:8080/api/v1/catalog/admin/contents"
+```
+
+Expected: 200/201 as appropriate, `401` without a token, `403` with a token
+that lacks the role, `404` for an unknown slug, `400` for `?size=500`, and
+`503` when a routed service is not running. Each service also exposes its own
+OpenAPI spec at `/v3/api-docs` and Swagger UI at `/swagger-ui.html`.
 
 ---
 
@@ -235,12 +351,12 @@ make nx-graph     # visualise Nx task graph
 
 Boot only what you need to fit your machine:
 
-| Profile | Services | ~RAM |
-|---|---|---|
-| `core` | eureka, config, gateway, postgres, redis, kafka, schema-registry, 5 domain services | 2.0GB |
-| `+ auth` | keycloak, mailhog | +0.6GB |
-| `+ storage` | minio, nginx-hls | +0.2GB |
-| `+ observability` | prometheus, grafana, loki, tempo, promtail | +0.6GB |
+| Profile           | Services                                                                            | ~RAM   |
+| ----------------- | ----------------------------------------------------------------------------------- | ------ |
+| `core`            | eureka, config, gateway, postgres, redis, kafka, schema-registry, 5 domain services | 2.0GB  |
+| `+ auth`          | keycloak, mailhog                                                                   | +0.6GB |
+| `+ storage`       | minio, nginx-hls                                                                    | +0.2GB |
+| `+ observability` | prometheus, grafana, loki, tempo, promtail                                          | +0.6GB |
 
 With 16GB of system RAM you can run **all profiles simultaneously** and still have ~10GB for your IDE and browser.
 
@@ -250,22 +366,22 @@ With 16GB of system RAM you can run **all profiles simultaneously** and still ha
 
 This table is your interview cheat-sheet: each local component maps 1:1 to a managed service in real production.
 
-| Local (this project) | Production real (AWS / GCP / Azure) |
-|---|---|
-| Docker Compose | Kubernetes (EKS / GKE / AKS) |
-| Eureka | Kubernetes Service Discovery (or Consul) |
-| Config Server (Git) | Spring Cloud Config + Vault, or AWS Parameter Store |
-| PostgreSQL (container) | RDS / Cloud SQL / Azure Database |
-| Redis (container) | ElastiCache / Memorystore / Azure Cache |
-| Kafka (container) | MSK / Confluent Cloud / EventBridge |
-| MinIO | S3 / GCS / Azure Blob |
-| Nginx serving HLS | CloudFront / Cloudflare CDN |
-| Prometheus + Grafana | Grafana Cloud / Datadog / New Relic |
-| Loki + Tempo | Managed Loki / Grafana Tempo / Honeycomb |
-| Keycloak (self-hosted) | Auth0 / Cognito / Okta |
-| GitHub Actions runners | Self-hosted runners / GitLab CI |
-| MailHog | SES / SendGrid / Postmark |
-| SonarQube Cloud | SonarQube Server / Snyk / Veracode |
+| Local (this project)   | Production real (AWS / GCP / Azure)                 |
+| ---------------------- | --------------------------------------------------- |
+| Docker Compose         | Kubernetes (EKS / GKE / AKS)                        |
+| Eureka                 | Kubernetes Service Discovery (or Consul)            |
+| Config Server (Git)    | Spring Cloud Config + Vault, or AWS Parameter Store |
+| PostgreSQL (container) | RDS / Cloud SQL / Azure Database                    |
+| Redis (container)      | ElastiCache / Memorystore / Azure Cache             |
+| Kafka (container)      | MSK / Confluent Cloud / EventBridge                 |
+| MinIO                  | S3 / GCS / Azure Blob                               |
+| Nginx serving HLS      | CloudFront / Cloudflare CDN                         |
+| Prometheus + Grafana   | Grafana Cloud / Datadog / New Relic                 |
+| Loki + Tempo           | Managed Loki / Grafana Tempo / Honeycomb            |
+| Keycloak (self-hosted) | Auth0 / Cognito / Okta                              |
+| GitHub Actions runners | Self-hosted runners / GitLab CI                     |
+| MailHog                | SES / SendGrid / Postmark                           |
+| SonarQube Cloud        | SonarQube Server / Snyk / Veracode                  |
 
 The application code is the same. Only the deployment target moves.
 
@@ -297,10 +413,10 @@ Conventional Commits enforced by `commitlint`. Pre-commit hooks (Husky) run Pret
 
 This project is being built in 10 phases. See [`docs/architecture/00-roadmap.md`](docs/architecture/00-roadmap.md) for the full plan.
 
-- [x] Phase 0 — Monorepo bootstrap (this commit)
-- [ ] Phase 1 — Eureka, Config Server, API Gateway skeleton
-- [ ] Phase 2 — PostgreSQL + Flyway + first domain (catalog)
-- [ ] Phase 3 — Auth with Keycloak (OIDC + JWT)
+- [x] Phase 0 — Monorepo bootstrap
+- [x] Phase 1 — Eureka, Config Server, API Gateway skeleton
+- [x] Phase 2 — PostgreSQL + Flyway + catalog and user domains
+- [x] Phase 3 — Auth with Keycloak (OIDC + JWT)
 - [ ] Phase 4 — Domain services + Resilience4j + rate limiting
 - [ ] Phase 5 — BFF reactive with WebClient + API composition + CQRS
 - [ ] Phase 6 — Video pipeline (FFmpeg + MinIO + Nginx)
