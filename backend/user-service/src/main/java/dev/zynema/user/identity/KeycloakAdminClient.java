@@ -1,6 +1,7 @@
 package dev.zynema.user.identity;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -36,6 +37,7 @@ public class KeycloakAdminClient {
     private final String clientId;
     private final String clientSecret;
 
+    @Autowired
     public KeycloakAdminClient(
         @Value("${zynema.identity.admin.server-url:http://localhost:8180}") String serverUrl,
         @Value("${zynema.identity.admin.realm:zynema}") String realm,
