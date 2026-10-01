@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/StefanElijah/zynema-project/compare/v1.0.0...v1.0.1) (2026-10-01)
+
+### Bug Fixes
+
+- **ci:** point sonarcloud at the organization key ([c7c5dd9](https://github.com/StefanElijah/zynema-project/commit/c7c5dd9bff9d431a8272a8e9767bae97d3c3e663))
+- **ci:** use the hyphenated organization key ([3021b5c](https://github.com/StefanElijah/zynema-project/commit/3021b5cae34beb02bdfec7028cad1e5d0aafbd1e))
+
 # 1.0.0 (2026-09-30)
 
 ### Bug Fixes
