@@ -35,4 +35,15 @@ describe('HeroSection', () => {
     await user.click(screen.getByRole('button', { name: /Reproducir/ }));
     expect(onPlay).toHaveBeenCalled();
   });
+
+  it('paints the backdrop behind the copy', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <HeroSection title="Dune" backdropUrl="/dune-backdrop.jpg" />
+      </MemoryRouter>
+    );
+
+    const backdrop = container.querySelector('[style*="dune-backdrop.jpg"]');
+    expect(backdrop).not.toBeNull();
+  });
 });

@@ -65,4 +65,54 @@ describe('Search', () => {
 
     expect(screen.getByText('Sin resultados para “zzz”.')).toBeInTheDocument();
   });
+
+  it('shows skeletons while the query is in flight', () => {
+    useSearch.mockReturnValue({ isLoading: true });
+
+    const { container } = renderWithProviders(<Search />, { route: '/search?q=dune' });
+
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
+
+  it('offers a retry when the search fails', async () => {
+    const refetch = vi.fn();
+    useSearch.mockReturnValue({ isLoading: false, isError: true, refetch });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Search />, { route: '/search?q=dune' });
+    expect(screen.getByText('La búsqueda falló.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('paginates the results through the URL', async () => {
+    useSearch.mockReturnValue({
+      isLoading: false,
+      data: { ...RESULTS, totalPages: 2, last: false },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Search />, { route: '/search?q=dune' });
+
+    expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Anterior' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('page=1');
+  });
+
+  it('walks back to the previous page', async () => {
+    useSearch.mockReturnValue({
+      isLoading: false,
+      data: { ...RESULTS, page: 1, totalPages: 2, first: false, last: true },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Search />, { route: '/search?q=dune&page=1' });
+
+    expect(screen.getByText('Página 2 de 2')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Anterior' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('page=0');
+  });
 });

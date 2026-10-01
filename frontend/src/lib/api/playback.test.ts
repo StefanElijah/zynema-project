@@ -78,6 +78,12 @@ describe('playback client', () => {
     });
   });
 
+  it('reports a successful heartbeat', async () => {
+    vi.mocked(apiClient.put).mockResolvedValue(responseWith({}));
+
+    await expect(heartbeat('session-1', 42)).resolves.toBe(true);
+  });
+
   it('closes the session with the final position', async () => {
     vi.mocked(apiClient.post).mockResolvedValue(responseWith({}));
 
@@ -85,5 +91,11 @@ describe('playback client', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/playback/sessions/session-1/end', {
       positionSeconds: 120,
     });
+  });
+
+  it('does not throw when closing the session fails', async () => {
+    vi.mocked(apiClient.post).mockRejectedValue(new Error('offline'));
+
+    await expect(endSession('session-1', 120)).resolves.toBe(false);
   });
 });

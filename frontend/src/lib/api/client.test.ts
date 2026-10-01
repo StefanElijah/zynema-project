@@ -93,6 +93,39 @@ describe('api client interceptors', () => {
     expect(userManager.signinRedirect).toHaveBeenCalledTimes(1);
   });
 
+  it('lets errors that are not 401 through untouched', async () => {
+    apiClient.defaults.adapter = async (config) => {
+      throw Object.assign(new Error('Server Error'), {
+        config,
+        response: { status: 500, statusText: 'Server Error', headers: {}, config, data: null },
+      });
+    };
+
+    await expect(apiClient.get('/users/me')).rejects.toThrow();
+    expect(userManager.signinSilent).not.toHaveBeenCalled();
+    expect(userManager.signinRedirect).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 401 that carries no request to replay', async () => {
+    apiClient.defaults.adapter = async () => {
+      throw { response: { status: 401 } };
+    };
+
+    await expect(apiClient.get('/users/me')).rejects.toBeDefined();
+    expect(userManager.signinSilent).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the login flow when the silent renewal fails', async () => {
+    vi.mocked(userManager.getUser).mockResolvedValue(partialUser('stale'));
+    vi.mocked(userManager.signinSilent).mockRejectedValue(new Error('silent failed'));
+    apiClient.defaults.adapter = async (config) => {
+      throw unauthorized(config);
+    };
+
+    await expect(apiClient.get('/users/me')).rejects.toThrow('silent failed');
+    expect(userManager.signinRedirect).toHaveBeenCalledTimes(1);
+  });
+
   it('renews at most once and does not loop back to login if the fresh token is also rejected', async () => {
     vi.mocked(userManager.getUser).mockResolvedValue(partialUser('stale'));
     vi.mocked(userManager.signinSilent).mockResolvedValue(partialUser('fresh'));
