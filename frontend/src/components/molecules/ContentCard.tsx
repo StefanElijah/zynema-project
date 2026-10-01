@@ -17,8 +17,6 @@ import {
   FaInfoCircle,
   FaStar,
   FaCalendarAlt,
-  FaClock,
-  FaVideo,
 } from 'react-icons/fa';
 import type { TitleCard } from '@lib/api';
 import '../../styles/content-card.css';
@@ -94,20 +92,16 @@ export default function ContentCard({
 
   if (!item) return null;
 
-  // The BFF's TitleCard is the card's data source. The layout survives fields
-  // the card used to get from the mock catalogue (seasons, synopsis, cast):
-  // without them those lines simply do not render.
+  // The BFF's TitleCard is the card's data source. The card used to render
+  // fields of the mock catalogue that the API does not carry (seasons,
+  // synopsis, cast): that JSX was unreachable and was removed rather than
+  // tested.
   const { title } = item;
   const genres = (item.genres ?? []).map((genre) => genre.name ?? '').filter(Boolean);
   const image = item.posterUrl ?? item.backdropUrl ?? FALLBACK_IMG;
-  const duration = undefined as number | undefined;
-  const seasons = undefined as number | undefined;
   const ageRating = item.maturityRating;
-  const description = undefined as string | undefined;
   const rating = item.averageRating;
   const year = item.releaseYear;
-  const cast: string[] = [];
-  const directors: string[] = [];
 
   const handleKeyAction =
     (fn?: (item: TitleCard) => void) => (event: ReactMouseEvent | ReactKeyboardEvent) => {
@@ -204,11 +198,6 @@ export default function ContentCard({
                       {genre}
                     </span>
                   ))}
-                  {duration ? (
-                    <span>· {duration} min</span>
-                  ) : seasons ? (
-                    <span>· {seasons} temp.</span>
-                  ) : null}
                 </div>
               </div>
               <div className="meta-right">
@@ -272,22 +261,7 @@ export default function ContentCard({
               <FaCalendarAlt /> {year}
             </div>
           )}
-          {duration && (
-            <div className="meta-item">
-              <FaClock /> {duration} min
-            </div>
-          )}
-          {seasons && (
-            <div className="meta-item">
-              <FaVideo /> {seasons} temp.
-            </div>
-          )}
         </div>
-        {description && (
-          <p className="expanded-description">
-            {description.length > 120 ? description.substring(0, 120) + '...' : description}
-          </p>
-        )}
         <div className="expanded-actions">
           <button className="btn-play-expanded" onClick={handleKeyAction(onPlay)}>
             <FaPlay className="me-1" /> Reproducir
@@ -374,11 +348,6 @@ export default function ContentCard({
                   <div className="modal-meta">
                     {ageRating && <span className="age-badge">{ageRating}</span>}
                     {year && <span>{year}</span>}
-                    {duration ? (
-                      <span>{duration} min</span>
-                    ) : seasons ? (
-                      <span>{seasons} temp.</span>
-                    ) : null}
                     {rating && (
                       <span className="rating-badge">
                         <FaStar className="me-1" /> {rating}/10
@@ -392,24 +361,6 @@ export default function ContentCard({
                       </span>
                     ))}
                   </div>
-                  {description && (
-                    <div className="modal-description">
-                      <h6>Sinopsis</h6>
-                      <p>{description}</p>
-                    </div>
-                  )}
-                  {cast.length > 0 && (
-                    <div className="modal-cast">
-                      <h6>Reparto</h6>
-                      <p>{cast.join(', ')}</p>
-                    </div>
-                  )}
-                  {directors.length > 0 && (
-                    <div className="modal-directors">
-                      <h6>Director{directors.length > 1 ? 'es' : ''}</h6>
-                      <p>{directors.join(', ')}</p>
-                    </div>
-                  )}
                   <div className="modal-actions">
                     <button className="btn-outline-light" onClick={() => onAdd?.(item)}>
                       <FaPlus className="me-1" /> Mi Lista

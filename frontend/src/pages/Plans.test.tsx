@@ -122,4 +122,72 @@ describe('Plans', () => {
 
     expect(screen.getByRole('button', { name: 'Tu plan' })).toBeDisabled();
   });
+
+  it('shows skeletons while the plans load', () => {
+    usePlans.mockReturnValue({ isLoading: true });
+
+    const { container } = renderWithProviders(<Plans />, { route: '/plans' });
+
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
+
+  it('offers a retry when the plans cannot be loaded', async () => {
+    const refetch = vi.fn();
+    usePlans.mockReturnValue({ isLoading: false, isError: true, refetch });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Plans />, { route: '/plans' });
+    expect(screen.getByText('No pudimos cargar los planes.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('shows a dash when a plan has no price', () => {
+    usePlans.mockReturnValue({
+      isLoading: false,
+      data: [{ id: 'p4', code: 'free', name: 'Free', billingPeriod: 'MONTHLY' }],
+    });
+
+    renderWithProviders(<Plans />, { route: '/plans' });
+
+    expect(screen.getByText('—')).toBeInTheDocument();
+  });
+
+  it('prices a yearly plan by the year', () => {
+    usePlans.mockReturnValue({
+      isLoading: false,
+      data: [
+        {
+          id: 'p3',
+          code: 'annual',
+          name: 'Annual',
+          price: 99,
+          currency: 'EUR',
+          billingPeriod: 'YEARLY',
+          maxStreams: 2,
+          maxQuality: 'FHD',
+        },
+      ],
+    });
+
+    renderWithProviders(<Plans />, { route: '/plans' });
+
+    expect(screen.getByText(/99,00\/año/)).toBeInTheDocument();
+  });
+
+  it('refreshes the account after a successful subscription', () => {
+    let options: { mutation?: { onSuccess?: () => void } } | undefined;
+    useSubscribe.mockImplementation((received: typeof options) => {
+      options = received;
+      return subscribeState();
+    });
+
+    const { queryClient } = renderWithProviders(<Plans />, { route: '/plans' });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
+
+    options?.mutation?.onSuccess?.();
+
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['/api/v1/web/account'] });
+  });
 });

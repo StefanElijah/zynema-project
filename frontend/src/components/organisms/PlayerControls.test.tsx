@@ -157,4 +157,60 @@ describe('PlayerControls', () => {
     await user.click(screen.getByRole('button', { name: 'Pantalla completa' }));
     expect(Element.prototype.requestFullscreen).toHaveBeenCalled();
   });
+
+  it('leaves fullscreen from the same button', async () => {
+    const user = userEvent.setup();
+    render(<Harness state={state} />);
+
+    Object.defineProperty(document, 'fullscreenElement', {
+      value: document.body,
+      configurable: true,
+    });
+    fireEvent(document, new Event('fullscreenchange'));
+    await user.click(screen.getByRole('button', { name: 'Pantalla completa' }));
+
+    expect(document.exitFullscreen).toHaveBeenCalled();
+    Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true });
+  });
+
+  it('formats hour-long titles', () => {
+    render(<Harness state={state} />);
+    const video = screen.getByTestId('video') as HTMLVideoElement;
+
+    state.duration = 3725;
+    fireEvent(video, new Event('durationchange'));
+
+    expect(screen.getByText('1:02:05')).toBeInTheDocument();
+  });
+
+  it('draws the buffered portion of the bar', () => {
+    const { container } = render(<Harness state={state} />);
+    const video = screen.getByTestId('video') as HTMLVideoElement;
+
+    state.duration = 100;
+    Object.defineProperty(video, 'buffered', {
+      get: () => ({ length: 1, end: () => 40 }),
+      configurable: true,
+    });
+    fireEvent(video, new Event('durationchange'));
+    fireEvent(video, new Event('progress'));
+
+    expect(container.querySelector('[style*="width: 40%"]')).not.toBeNull();
+  });
+
+  it('shows 0:00 for a position the element cannot report', () => {
+    render(<Harness state={state} />);
+    const video = screen.getByTestId('video') as HTMLVideoElement;
+
+    state.currentTime = Number.NaN;
+    fireEvent(video, new Event('timeupdate'));
+
+    expect(screen.getAllByText('0:00').length).toBeGreaterThan(0);
+  });
+
+  it('does nothing without a video element', () => {
+    render(<PlayerControls videoRef={{ current: null }} />);
+
+    expect(screen.getByRole('button', { name: 'Reproducir' })).toBeInTheDocument();
+  });
 });

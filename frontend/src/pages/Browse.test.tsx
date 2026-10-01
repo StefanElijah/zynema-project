@@ -82,4 +82,23 @@ describe('Browse', () => {
 
     expect(refetch).toHaveBeenCalled();
   });
+
+  it('shows skeletons while the page loads', () => {
+    useBrowse.mockReturnValue({ isLoading: true });
+
+    const { container } = renderWithProviders(<Browse />, { route: '/catalog?type=MOVIE' });
+
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
+
+  it('returns to the first page when the filter changes', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Browse />, { route: '/catalog?type=MOVIE&page=2' });
+
+    await user.selectOptions(screen.getByLabelText('Ordenar por'), 'averageRating,desc');
+
+    const location = screen.getByTestId('location');
+    expect(location).toHaveTextContent('sort=averageRating%2Cdesc');
+    expect(location).not.toHaveTextContent('page=');
+  });
 });

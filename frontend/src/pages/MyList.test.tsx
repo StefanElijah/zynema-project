@@ -87,4 +87,12 @@ describe('MyList', () => {
 
     expect(screen.getByText(/Algunas secciones no están disponibles ahora/)).toBeInTheDocument();
   });
+
+  it('shows skeletons while the rails load', () => {
+    profileMock.current = { profiles: [], selected: undefined, isLoading: true };
+
+    const { container } = renderWithProviders(<MyList />, { route: '/my-list' });
+
+    expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
 });

@@ -45,6 +45,9 @@ export default function Watch() {
   const sessionRef = useRef<{ id: string } | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resumeAtRef = useRef(0);
+  // React detaches refs before passive-effect cleanups, so on unmount the video
+  // element is already gone: the last position has to live in a ref.
+  const positionRef = useRef(0);
 
   const { data, isLoading } = useContent(
     contentId ?? '',
@@ -77,12 +80,22 @@ export default function Watch() {
       hlsRef.current = null;
     }
     const session = sessionRef.current;
-    const video = videoRef.current;
     sessionRef.current = null;
-    if (session && video) {
-      await endSession(session.id, Math.floor(video.currentTime || 0));
+    if (session) {
+      await endSession(session.id, positionRef.current);
     }
   }, []);
+
+  // The player's position, kept where the cleanup can still read it.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (status !== 'playing' || !video) return;
+    const onTimeUpdate = () => {
+      positionRef.current = Math.floor(video.currentTime || 0);
+    };
+    video.addEventListener('timeupdate', onTimeUpdate);
+    return () => video.removeEventListener('timeupdate', onTimeUpdate);
+  }, [status]);
 
   // Leaving the page ends the session: a stream nobody is watching is a
   // concurrent-stream slot somebody else cannot use.
@@ -93,10 +106,11 @@ export default function Watch() {
     [stop]
   );
 
-  const attachPlayer = (streamPath: string) => {
+  /** Returns false when the browser cannot play HLS: the caller must not claim it is playing. */
+  const attachPlayer = (streamPath: string): boolean => {
     const video = videoRef.current;
     const token = auth.user?.access_token;
-    if (!video) return;
+    if (!video) return false;
 
     if (Hls.isSupported()) {
       const hls = new Hls({
@@ -121,14 +135,17 @@ export default function Watch() {
         }
       });
       hlsRef.current = hls;
+      return true;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       // Safari plays HLS natively, but cannot send a header for the manifest;
       // the token cookie flow is the future fix (see ADR-0024).
       video.src = streamPath;
       video.play().catch(() => {});
+      return true;
     } else {
       setStatus('error');
       setMessage('Tu navegador no puede reproducir HLS.');
+      return false;
     }
   };
 
@@ -157,7 +174,10 @@ export default function Watch() {
     }
 
     sessionRef.current = { id: sessionId };
-    attachPlayer(result.session.streamPath ?? '');
+    if (!attachPlayer(result.session.streamPath ?? '')) {
+      // The player already reported why; claiming "playing" would hide it.
+      return;
+    }
     setStatus('playing');
     heartbeatRef.current = setInterval(() => {
       const video = videoRef.current;
