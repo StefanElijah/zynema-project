@@ -31,9 +31,11 @@ import java.util.concurrent.TimeUnit;
 public class FfmpegTranscoder implements Transcoder {
 
     private final WorkerProperties.Ffmpeg settings;
+    private final ProcessRunner runner;
 
-    public FfmpegTranscoder(WorkerProperties properties) {
+    public FfmpegTranscoder(WorkerProperties properties, ProcessRunner runner) {
         this.settings = properties.ffmpeg();
+        this.runner = runner;
     }
 
     @Override
@@ -49,10 +51,9 @@ public class FfmpegTranscoder implements Transcoder {
                 source.getFileName(), settings.renditions().size(), hasAudio ? "with" : "synthetic");
 
             Path logFile = outputDirectory.resolve("ffmpeg.log");
-            Process process = new ProcessBuilder(command)
+            Process process = runner.start(new ProcessBuilder(command)
                 .redirectErrorStream(true)
-                .redirectOutput(logFile.toFile())
-                .start();
+                .redirectOutput(logFile.toFile()));
 
             boolean finished = process.waitFor(settings.timeout().toMillis(), TimeUnit.MILLISECONDS);
             if (!finished) {
@@ -75,11 +76,10 @@ public class FfmpegTranscoder implements Transcoder {
 
     private boolean hasAudioTrack(Path source) {
         try {
-            Process probe = new ProcessBuilder("ffprobe", "-v", "error",
+            Process probe = runner.start(new ProcessBuilder("ffprobe", "-v", "error",
                 "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0",
                 source.toString())
-                .redirectErrorStream(true)
-                .start();
+                .redirectErrorStream(true));
             String output = new String(probe.getInputStream().readAllBytes());
             probe.waitFor();
             return !output.isBlank();
