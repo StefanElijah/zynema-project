@@ -1,3 +1,9 @@
+## [1.0.5](https://github.com/StefanElijah/zynema-project/compare/v1.0.4...v1.0.5) (2026-10-01)
+
+### Bug Fixes
+
+- **frontend:** close the session with the last position and show the no-hls error ([f46d432](https://github.com/StefanElijah/zynema-project/commit/f46d4326330a0557fd9a58a2039dba8b92117e75))
+
 ## [1.0.4](https://github.com/StefanElijah/zynema-project/compare/v1.0.3...v1.0.4) (2026-10-01)
 
 ### Bug Fixes
