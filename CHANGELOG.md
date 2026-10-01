@@ -1,3 +1,12 @@
+## [1.0.2](https://github.com/StefanElijah/zynema-project/compare/v1.0.1...v1.0.2) (2026-10-01)
+
+### Bug Fixes
+
+- **ci:** activate jacoco so there is coverage to import ([2dea09f](https://github.com/StefanElijah/zynema-project/commit/2dea09f386fc29afb33b2a08490559b904ef0e7c))
+- **ci:** classify the test files as tests in sonar ([a4d7f0a](https://github.com/StefanElijah/zynema-project/commit/a4d7f0a93f469772f2d2c8cf76da63d24848e40f))
+- **frontend:** keep the card and oidc config off the sonar list ([38b2645](https://github.com/StefanElijah/zynema-project/commit/38b2645331c0e2fb869faeafaf515166b556f587))
+- **playback:** trim the public base without a regex ([f77540e](https://github.com/StefanElijah/zynema-project/commit/f77540ef3864165c341ec2163f8ff5b0590e56c5))
+
 ## [1.0.1](https://github.com/StefanElijah/zynema-project/compare/v1.0.0...v1.0.1) (2026-10-01)
 
 ### Bug Fixes
