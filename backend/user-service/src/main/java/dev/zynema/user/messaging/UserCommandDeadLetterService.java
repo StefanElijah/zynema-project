@@ -55,6 +55,9 @@ public class UserCommandDeadLetterService {
 
     private UUID field(Object payload, String name) {
         Object value = raw(payload, name);
+        if (value instanceof UUID uuid) {
+            return uuid;
+        }
         if (value instanceof String text) {
             try {
                 return UUID.fromString(text);
