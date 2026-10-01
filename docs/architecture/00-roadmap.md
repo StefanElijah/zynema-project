@@ -269,7 +269,12 @@ a rebuild. None of it breaks a build; all of it breaks the promise.
 - [x] JaCoCo per module (reports uploaded) and the **SonarCloud workflow with
       the quality gate** on PRs: one project, Java + TypeScript sources,
       JaCoCo XML and lcov wired; it activates the moment `SONAR_TOKEN` exists
-      and skips itself (green) until then
+      and skips itself (green) until then. Operational configuration:
+      organization `stefanelijah-zynema-project` (hyphen — SonarCloud
+      normalizes the key), gate **Sonar way** (the organization default),
+      **New code = Previous version** (the repo tags every release), and the
+      organization's fudge factor keeps coverage/duplication out of the gate
+      for changes under 20 lines
 - [x] **OpenAPI documents published as artifacts**: one job per service boots
       its jar and captures `/v3/api-docs`; the BFF job also diffs the live
       document against `libs/api-contracts/openapi.json`, so a stale SPA
