@@ -3,6 +3,7 @@ package dev.zynema.playback.storage;
 import dev.zynema.playback.config.StorageProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
@@ -79,7 +80,7 @@ public class HlsStorage {
      * perfectly valid signature with "the Credential is mal-formed".
      */
     private String publicForm(URL signed) {
-        String publicBase = properties.publicBaseUrl().replaceAll("/+$", "");
+        String publicBase = StringUtils.trimTrailingCharacter(properties.publicBaseUrl(), '/');
         String query = signed.getQuery();
         return publicBase + signed.getPath() + (query == null ? "" : "?" + query);
     }
