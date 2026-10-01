@@ -2,6 +2,14 @@
 
 > Production-grade streaming platform simulation, locally runnable. Netflix-style microservice architecture with the same pieces you'd use in real production — only _where_ they live changes, not _what_ they are.
 
+[![Backend CI](https://github.com/StefanElijah/zynema-project/actions/workflows/backend-ci.yml/badge.svg?branch=main)](https://github.com/StefanElijah/zynema-project/actions/workflows/backend-ci.yml)
+[![Frontend CI](https://github.com/StefanElijah/zynema-project/actions/workflows/frontend-ci.yml/badge.svg?branch=main)](https://github.com/StefanElijah/zynema-project/actions/workflows/frontend-ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=StefanElijah_zynema-project&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=StefanElijah_zynema-project)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=StefanElijah_zynema-project&metric=coverage)](https://sonarcloud.io/summary/new_code?id=StefanElijah_zynema-project)
+[![Release](https://img.shields.io/github/v/release/StefanElijah/zynema-project?label=release)](https://github.com/StefanElijah/zynema-project/releases)
+
+**Status:** all ten phases delivered, current release **v1.0.6**, SonarCloud quality gate green at **90.6% coverage** with **0 open issues**.
+
 ---
 
 ## ⚠️ Package manager: pnpm exclusively
@@ -38,38 +46,41 @@ pnpm format         # format everything
 ## Architecture overview
 
 ```
-        ┌───────────────────────────────────────────────┐
-        │  CLIENTS:  Web (Vite+React)  ·  Mobile (RN)  │
-        └───────────────────┬───────────────────────────┘
-                            ▼
-        ┌───────────────────────────────────────────────┐
-        │  API GATEWAY  (Spring Cloud Gateway, WebFlux) │
-        └─┬───────────┬───────────┬──────────┬──────────┘
-          ▼           ▼           ▼          ▼
-       ┌──────┐  ┌────────┐  ┌────────┐ ┌─────────┐
-       │ AUTH │  │ CATALOG│  │ PAYMENT│ │ PLAYBACK│
-       └──┬───┘  └───┬────┘  └────┬───┘ └─────┬───┘
-          │          │            │           │
-          └──────────┴─────┬──────┴───────────┘
-                            ▼
-              ┌──────────────────────────┐
-              │  EUREKA  (discovery)     │
-              │  CONFIG  (config repo)   │
-              └──────────────────────────┘
-                            │
-        ┌───────────────────┼───────────────────┐
-        ▼                   ▼                   ▼
-  ┌──────────┐       ┌──────────┐        ┌──────────┐
-  │ Postgres │       │   Redis  │        │  Kafka   │
-  │  (DBPS)  │       │  (cache) │        │ (events) │
-  └──────────┘       └──────────┘        └──────────┘
+        ┌─────────────────────────────────────────────────┐
+        │  CLIENTS:  Web SPA (Vite · React 19 · hls.js)   │
+        └───────────────────────┬─────────────────────────┘
+                                ▼
+        ┌─────────────────────────────────────────────────┐
+        │  API GATEWAY  (Spring Cloud Gateway, WebFlux)   │
+        └─┬───────────┬───────────┬───────────┬───────────┬─┘
+          ▼           ▼           ▼           ▼           ▼
+      ┌──────┐   ┌─────────┐  ┌─────────┐ ┌─────────┐  ┌───────┐
+      │ AUTH │   │ CATALOG │  │ PAYMENT │ │PLAYBACK │  │  BFF  │
+      └──────┘   └─────────┘  └─────────┘ └─────────┘  └───────┘
+
+      The BFF composes the four domains over WebClient and owns the
+      SPA's screens (/api/v1/web/**); the rest talks HTTP via OpenFeign.
+
+                            ┌──────────────────────────┐
+                            │  EUREKA  (discovery)     │
+                            │  CONFIG  (config repo)   │
+                            └────────────┬─────────────┘
+                                         │
+                       ┌─────────────────┼───────────────────┐
+                       ▼                 ▼                   ▼
+                 ┌──────────┐      ┌──────────┐        ┌──────────┐
+                 │ Postgres │      │  Redis   │        │  Kafka   │
+                 │  (DBPS)  │      │  (cache) │        │ (events) │
+                 └──────────┘      └──────────┘        └────┬─────┘
+                                                            ▼
+   Async: notification-service (consumers + dead letters) ·
+   video-worker (FFmpeg HLS, one-shot) · MinIO + nginx edge
 
   Cross-cutting:
-  • Resilience4j (circuit breakers, retries, bulkheads)
-  • OpenFeign (inter-service HTTP) + WebClient (BFF reactive)
-  • OpenTelemetry → Tempo (distributed tracing)
-  • Prometheus + Grafana + Loki (metrics, logs, dashboards)
-  • Keycloak (OIDC identity provider)
+  • Resilience4j (circuit breakers, retries, bulkheads) · OpenFeign + WebClient
+  • OpenTelemetry → Tempo (traces, span metrics, service graph)
+  • Prometheus + Grafana + Loki + Alertmanager (metrics, logs, alerts)
+  • Keycloak (OIDC) · Kafka + JSON Schema Registry (outbox, sagas)
   • MinIO + FFmpeg + Nginx (video pipeline)
 ```
 
@@ -81,7 +92,7 @@ Read the full design in [`docs/architecture/`](docs/architecture/) and decision 
 
 | Layer              | Tech                                                             | Why                                             |
 | ------------------ | ---------------------------------------------------------------- | ----------------------------------------------- |
-| **Frontend**       | Vite · React 18 · TypeScript                                     | CRA is deprecated, Vite is the modern standard  |
+| **Frontend**       | Vite · React 19 · TypeScript                                     | CRA is deprecated, Vite is the modern standard  |
 | **State (server)** | TanStack Query                                                   | Async cache, revalidation, no Redux boilerplate |
 | **State (client)** | Zustand                                                          | Lightweight UI state                            |
 | **Styling**        | Tailwind CSS · shadcn/ui                                         | Utility-first + accessible components           |
@@ -127,13 +138,14 @@ Read the full design in [`docs/architecture/`](docs/architecture/) and decision 
 │   ├── playback-service/# Playback sessions (Event Sourcing)
 │   ├── bff-service/     # Reactive aggregator for the frontend
 │   ├── notification-service/ # Email + Kafka consumer
+│   ├── video-worker/    # One-shot FFmpeg HLS transcoder (ADR-0023)
 │   └── event-contracts/ # Shared event schemas
-├── frontend/            # Vite + React 18 + TypeScript
+├── frontend/            # Vite + React 19 + TypeScript
 ├── libs/                # Shared TypeScript libraries
 │   └── api-contracts/   # OpenAPI-generated types
 ├── infra/               # Infrastructure as code
 │   ├── docker/          # Dockerfiles for custom services
-│   ├── observability/   # Prometheus, Grafana, Loki, Tempo configs
+│   ├── observability/   # Prometheus, Alertmanager, Grafana, Loki, Tempo configs
 │   ├── keycloak/        # Realm export
 │   ├── nginx/           # HLS serving config
 │   ├── ffmpeg/          # Transcoding scripts
@@ -151,7 +163,7 @@ Read the full design in [`docs/architecture/`](docs/architecture/) and decision 
 ├── .env.example         # All env vars documented
 ├── .editorconfig
 ├── .gitignore
-├── .nvmrc               # Node 20+
+├── .nvmrc               # Node 24 (CI pins 22)
 └── .sdkmanrc            # Java 21, Maven 3.9.9
 ```
 
@@ -163,7 +175,7 @@ Read the full design in [`docs/architecture/`](docs/architecture/) and decision 
 
 | Tool           | Version | Check              |
 | -------------- | ------- | ------------------ |
-| Node.js        | 20+     | `node --version`   |
+| Node.js        | 22+     | `node --version`   |
 | pnpm           | 9+      | `pnpm --version`   |
 | Java           | 21      | `java --version`   |
 | Maven          | 3.9+    | `mvn --version`    |
@@ -330,16 +342,21 @@ make help         # full command list
 make check        # verify tooling
 make up-core      # start core only (~2GB)
 make up           # start core + auth (~2.5GB)
+make up-storage   # start MinIO + nginx-hls and create the buckets
+make up-observability # start Prometheus, Alertmanager, Grafana, Loki, Tempo
 make up-full      # start everything (~5GB)
+make refresh-targets  # regenerate Prometheus targets from Eureka
 make down         # stop (keeps volumes)
 make clean        # stop + delete volumes
 make logs         # tail all logs
 make logs-gateway # tail one service
-make seed         # load demo data
+make storage-init # create the pipeline buckets (idempotent)
+make fetch-samples # import the Creative-Commons demo videos
 make transcode    # transcode demo videos
 make dev-fe       # run Vite dev server
-make build        # build everything
-make test         # run all tests
+make build-be     # build all backend modules
+make test-be      # run all backend tests
+make test-fe      # run frontend tests
 make lint         # lint all
 make format       # format all
 make nx-graph     # visualise Nx task graph
@@ -356,7 +373,7 @@ Boot only what you need to fit your machine:
 | `core`            | eureka, config, gateway, postgres, redis, kafka, schema-registry, 5 domain services | 2.0GB  |
 | `+ auth`          | keycloak, mailhog                                                                   | +0.6GB |
 | `+ storage`       | minio, nginx-hls                                                                    | +0.2GB |
-| `+ observability` | prometheus, grafana, loki, tempo, promtail                                          | +0.6GB |
+| `+ observability` | prometheus, alertmanager, grafana, loki, tempo, promtail                            | +0.6GB |
 
 With 16GB of system RAM you can run **all profiles simultaneously** and still have ~10GB for your IDE and browser.
 
@@ -377,6 +394,7 @@ This table is your interview cheat-sheet: each local component maps 1:1 to a man
 | MinIO                  | S3 / GCS / Azure Blob                               |
 | Nginx serving HLS      | CloudFront / Cloudflare CDN                         |
 | Prometheus + Grafana   | Grafana Cloud / Datadog / New Relic                 |
+| Alertmanager           | PagerDuty / Opsgenie / Grafana OnCall               |
 | Loki + Tempo           | Managed Loki / Grafana Tempo / Honeycomb            |
 | Keycloak (self-hosted) | Auth0 / Cognito / Okta                              |
 | GitHub Actions runners | Self-hosted runners / GitLab CI                     |
@@ -394,6 +412,7 @@ The application code is the same. Only the deployment target moves.
 - [`docs/api/`](docs/api/) — OpenAPI specs (generated by springdoc-openapi per service)
 - [`docs/runbooks/`](docs/runbooks/) — Onboarding, troubleshooting, disaster recovery
 - [`docs/learning/`](docs/learning/) — Deep dives on patterns (Saga, Outbox, CQRS, Event Sourcing)
+- [`docs/demo-script.md`](docs/demo-script.md) — Five-minute walkthrough for demos and interviews
 
 ---
 
@@ -411,22 +430,33 @@ Conventional Commits enforced by `commitlint`. Pre-commit hooks (Husky) run Pret
 
 ## Roadmap
 
-This project is being built in 10 phases. See [`docs/architecture/00-roadmap.md`](docs/architecture/00-roadmap.md) for the full plan.
+All ten phases are delivered and released (current: **v1.0.6**). See
+[`docs/architecture/00-roadmap.md`](docs/architecture/00-roadmap.md) for the full
+plan, the per-phase details and the lessons kept from each one, and
+[`CHANGELOG.md`](https://github.com/StefanElijah/zynema-project/blob/main/CHANGELOG.md)
+for the release history.
 
 - [x] Phase 0 — Monorepo bootstrap
 - [x] Phase 1 — Eureka, Config Server, API Gateway skeleton
 - [x] Phase 2 — PostgreSQL + Flyway + catalog and user domains
 - [x] Phase 3 — Auth with Keycloak (OIDC + JWT)
-- [ ] Phase 4 — Domain services + Resilience4j + rate limiting
-- [ ] Phase 5 — BFF reactive with WebClient + API composition + CQRS
-- [ ] Phase 6 — Video pipeline (FFmpeg + MinIO + Nginx)
-- [ ] Phase 7 — Kafka events + Saga + Outbox + Event Sourcing
-- [ ] Phase 8 — Frontend complete (TanStack Query, Zustand, hls.js, shadcn/ui)
-- [ ] Phase 9 — Observability end-to-end (Prometheus, Grafana, Loki, Tempo, OpenTelemetry)
-- [ ] Phase 10 — CI/CD, SonarQube, CHANGELOG, Kubernetes manifests
+- [x] Phase 4 — Domain services + Resilience4j + rate limiting
+- [x] Phase 5 — BFF reactive with WebClient + API composition + CQRS
+- [x] Phase 6 — Video pipeline (FFmpeg + MinIO + Nginx)
+- [x] Phase 7 — Kafka events + Saga + Outbox + Event Sourcing
+- [x] Phase 8 — Frontend complete (TanStack Query, Zustand, hls.js, shadcn/ui)
+- [x] Phase 9 — Observability end-to-end (Prometheus, Grafana, Loki, Tempo, OpenTelemetry)
+- [x] Phase 10 — CI/CD, SonarQube, CHANGELOG, Kubernetes manifests
+
+**Post-roadmap hardening:** the project is above the 90% line on SonarCloud
+(90.6% overall, frontend at 99.3%), the quality gate is green with zero open
+issues, and every workflow — backend matrix, frontend matrix + per-browser E2E,
+OpenAPI drift check, observability validation and semantic release — runs on
+`main` and on pull requests.
 
 ---
 
 ## License
 
-This is a private repository. No public license is granted.
+The source is public for portfolio and study purposes. No license is granted
+for reuse, redistribution or derivative works — all rights reserved.

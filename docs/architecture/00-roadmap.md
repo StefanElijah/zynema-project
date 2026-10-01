@@ -309,6 +309,21 @@ matched nothing and the test files counted as uncovered main code.
 
 ---
 
+## After the roadmap — the coverage push
+
+With the ten phases closed, the quality gate moved from "green on new code" to a
+real number. The frontend went from 24% to 99.3% (PRs #5 and #6, with two real
+player bugs fixed on the way), and the backend gained the failure-path suites —
+shared exception handlers, the outbox, both dead-letter services, the transcoder
+behind a `ProcessRunner` seam, the admin client behind its `RestClient` seam and
+the cache wiring — taking the project to **90.6% with zero open issues**. The
+releases are cut automatically from `main`: `v1.0.0` after Fase 10 and `v1.0.6`
+after the coverage work. The gate also caught one flaky integration test
+(`GatewayRateLimitTests.rejectionCarriesTheContract`, sensitive to token-bucket
+refill timing) that is the next thing to harden.
+
+---
+
 ## Architecture decision records
 
 See [`docs/adr/README.md`](../adr/README.md) for the full index. Every
