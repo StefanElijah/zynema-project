@@ -1,3 +1,9 @@
+## [1.0.4](https://github.com/StefanElijah/zynema-project/compare/v1.0.3...v1.0.4) (2026-10-01)
+
+### Bug Fixes
+
+- **ci:** count the test helpers as tests in sonar ([f74c07c](https://github.com/StefanElijah/zynema-project/commit/f74c07c3c915b35bfcd55bb21e26a6aa68d05e7c))
+
 ## [1.0.3](https://github.com/StefanElijah/zynema-project/compare/v1.0.2...v1.0.3) (2026-10-01)
 
 ### Bug Fixes
