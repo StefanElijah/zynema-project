@@ -1,3 +1,10 @@
+## [1.0.6](https://github.com/StefanElijah/zynema-project/compare/v1.0.5...v1.0.6) (2026-10-01)
+
+### Bug Fixes
+
+- **user-service:** read typed uuid fields in the role dead letters ([6c4d1dc](https://github.com/StefanElijah/zynema-project/commit/6c4d1dc1add91f8fe7c6bb584dc302b980ee27f6))
+- **user-service:** wire the admin client through its annotated constructor ([89f6609](https://github.com/StefanElijah/zynema-project/commit/89f6609f8af2212336a324fb1448ad8ee277f62c))
+
 ## [1.0.5](https://github.com/StefanElijah/zynema-project/compare/v1.0.4...v1.0.5) (2026-10-01)
 
 ### Bug Fixes
