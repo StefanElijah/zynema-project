@@ -75,6 +75,7 @@
 .content-card .card-overlay {
   position: absolute;
   inset: 0;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -94,11 +95,32 @@
   border-radius: var(--radius-lg);
 }
 
-/* Show overlay on hover/focus (solo en estado normal) */
+/* Show overlay on hover/focus (solo en estado normal). The overlay itself
+   stays transparent to the pointer: its buttons opt back in, and clicks on
+   the rest of the poster fall through to the open button underneath. */
 .content-card:not(.expanded):hover .card-overlay {
   opacity: 1;
   transform: translateY(0);
+}
+
+.content-card:not(.expanded):hover .card-overlay button {
   pointer-events: auto;
+}
+
+/* Botón real a pantalla completa bajo el póster: abre el modal de detalles */
+.content-card .card-open-button {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.content-card .card-open-button:focus-visible {
+  outline: 2px solid var(--accent-red, #e50916);
+  outline-offset: -2px;
 }
 
 /* Top area: age badge + primary actions */
@@ -583,4 +605,40 @@
   .portal-card-expanded .expanded-description {
     font-size: 0.8rem;
   }
+}
+
+/* ===== MODAL DE DETALLES =====
+   El backdrop no tenía estilos: el modal se renderizaba dentro del flujo del
+   body. Ahora es un overlay real; el botón a pantalla completa cierra al
+   hacer clic fuera y el contenido queda por encima. */
+.content-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--modal-z-index, 1050);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.78);
+  overflow-y: auto;
+}
+
+.content-modal-backdrop-button {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.content-modal {
+  position: relative;
+  z-index: 1;
+  width: min(920px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-lg, 12px);
 }

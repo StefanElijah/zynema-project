@@ -148,27 +148,24 @@ export default function ContentCard({
     leaveTimerRef.current = setTimeout(() => setIsHovered(false), 150);
   };
 
-  const handleCardClick = (event: ReactMouseEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement;
-    if (!target.closest('button') && !target.closest('a')) {
-      handleInfoClick(event);
-    }
-  };
-
   const cardBase = (
-    // A plain container with a click handler for mouse users: the card cannot
-    // be a <button> because it contains buttons of its own, and faking the role
-    // on a div is exactly what Sonar (S6819) flags. Keyboard users get the real
-    // buttons: "Reproducir" and "Más información" both work without a mouse.
+    // The card opens the modal through a real full-size button behind the
+    // poster: a click handler on the wrapper div would be a non-native
+    // interactive element (Sonar S6848) and would not work with the keyboard.
     <div
       ref={cardRef}
       className={`content-card-wrapper ${variant} ${isHovered ? 'hovered' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      onClick={handleCardClick}
     >
       <div className="content-card">
         <div className="image-wrapper">
+          <button
+            type="button"
+            className="card-open-button"
+            onClick={handleInfoClick}
+            aria-label={`Ver detalles de ${title}`}
+          />
           <img
             src={image}
             alt={title}
@@ -339,8 +336,17 @@ export default function ContentCard({
       {createPortal(expandedContent, document.body)}
       {showModal &&
         createPortal(
-          <div className="content-modal-backdrop" onClick={handleCloseModal}>
-            <div className="content-modal" onClick={(event) => event.stopPropagation()}>
+          <div className="content-modal-backdrop">
+            {/* Click-outside closes, without a listener on a non-interactive
+                element: the button covers the backdrop and the modal sits
+                above it. */}
+            <button
+              type="button"
+              className="content-modal-backdrop-button"
+              onClick={handleCloseModal}
+              aria-label="Cerrar detalles"
+            />
+            <div className="content-modal">
               <div className="content-modal-header">
                 <h2 className="content-modal-title">{title}</h2>
                 <button

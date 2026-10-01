@@ -45,4 +45,15 @@ describe('ContentCard', () => {
     // The genre appears twice: on the card overlay and inside the modal.
     expect(screen.getAllByText('Ciencia ficción').length).toBeGreaterThan(0);
   });
+
+  it('opens from the poster button and closes from the backdrop', async () => {
+    const user = userEvent.setup();
+
+    render(<ContentCard item={CARD} />);
+    await user.click(screen.getByRole('button', { name: 'Ver detalles de Dune' }));
+    expect(screen.getByRole('heading', { name: 'Dune' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cerrar detalles' }));
+    expect(screen.queryByRole('heading', { name: 'Dune' })).not.toBeInTheDocument();
+  });
 });
