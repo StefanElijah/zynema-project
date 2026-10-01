@@ -1,3 +1,9 @@
+## [1.0.3](https://github.com/StefanElijah/zynema-project/compare/v1.0.2...v1.0.3) (2026-10-01)
+
+### Bug Fixes
+
+- **frontend:** native buttons for the card and the modal backdrop ([9025fec](https://github.com/StefanElijah/zynema-project/commit/9025fec986f5868f30958049e1af45de000cc3e4))
+
 ## [1.0.2](https://github.com/StefanElijah/zynema-project/compare/v1.0.1...v1.0.2) (2026-10-01)
 
 ### Bug Fixes
