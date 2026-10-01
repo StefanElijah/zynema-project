@@ -156,15 +156,16 @@ export default function ContentCard({
   };
 
   const cardBase = (
+    // A plain container with a click handler for mouse users: the card cannot
+    // be a <button> because it contains buttons of its own, and faking the role
+    // on a div is exactly what Sonar (S6819) flags. Keyboard users get the real
+    // buttons: "Reproducir" and "Más información" both work without a mouse.
     <div
       ref={cardRef}
       className={`content-card-wrapper ${variant} ${isHovered ? 'hovered' : ''}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleCardClick}
-      role="button"
-      tabIndex={0}
-      aria-label={`Ver detalles de ${title}`}
     >
       <div className="content-card">
         <div className="image-wrapper">

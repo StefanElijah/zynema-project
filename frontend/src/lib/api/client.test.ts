@@ -13,11 +13,8 @@ vi.mock('../auth/userManager', () => ({
 const { userManager } = await import('../auth/userManager');
 const { apiClient } = await import('./client');
 
-const okResponse = (
-  config: InternalAxiosRequestConfig,
-  data: unknown = { ok: true }
-): AxiosResponse => ({
-  data,
+const okResponse = (config: InternalAxiosRequestConfig, data?: unknown): AxiosResponse => ({
+  data: data ?? { ok: true },
   status: 200,
   statusText: 'OK',
   headers: {},

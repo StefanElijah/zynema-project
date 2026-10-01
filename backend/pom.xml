@@ -262,6 +262,18 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <!-- Active, not just managed: pluginManagement only configures a
+                 plugin that someone declares, and nobody declared JaCoCo — so
+                 no module ever produced a report. The coverage artifacts of
+                 the CI had been empty since Fase 0 and SonarCloud had nothing
+                 to import. The executions and version come from the managed
+                 block above. -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 
 </project>
