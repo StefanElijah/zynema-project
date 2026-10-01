@@ -300,7 +300,12 @@ the bug until the environment changes. Second, the repo had never validated
 its own compose file on a clean machine: 240 invisible control characters in
 the section banners were tolerated locally and rejected by the runner. Same
 family as F4, F5 and F9: an integration that silently does nothing, or a gate
-that silently does not run, is worse than no gate at all.
+that silently does not run, is worse than no gate at all. Two more instances
+surfaced when the gate went live: JaCoCo had lived only in
+`pluginManagement` since Fase 0 — nobody declared it, no report was ever
+produced, and the CI's coverage artifact had always been empty; and Sonar's
+path patterns do not support brace expansion, so `*.{test,spec}.{ts,tsx}`
+matched nothing and the test files counted as uncovered main code.
 
 ---
 
