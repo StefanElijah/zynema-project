@@ -30,7 +30,7 @@ import java.util.Map;
 @Component
 public class KeycloakAdminClient {
 
-    private final RestClient http = RestClient.create();
+    private final RestClient http;
     private final String serverUrl;
     private final String realm;
     private final String clientId;
@@ -41,6 +41,11 @@ public class KeycloakAdminClient {
         @Value("${zynema.identity.admin.realm:zynema}") String realm,
         @Value("${zynema.identity.admin.client-id:zynema-user-service}") String clientId,
         @Value("${zynema.identity.admin.client-secret:zynema-user-service-dev-secret}") String clientSecret) {
+        this(RestClient.create(), serverUrl, realm, clientId, clientSecret);
+    }
+
+    KeycloakAdminClient(RestClient http, String serverUrl, String realm, String clientId, String clientSecret) {
+        this.http = http;
         this.serverUrl = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
         this.realm = realm;
         this.clientId = clientId;
