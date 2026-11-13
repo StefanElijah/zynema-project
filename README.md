@@ -230,7 +230,7 @@ usable immediately:
 | Seasons / episodes                 | 80 / 48                                 |
 | Seeded account (`demo@zynema.dev`) | 1 user, 2 profiles, watchlist + history |
 
-The 25 titles that ship with local artwork under `frontend/public/assets/`
+The 26 titles that ship with local artwork under `frontend/public/assets/`
 carry real poster/backdrop paths; the rest have `null` assets on purpose, which
 exercises the frontend's fallback handling.
 
