@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
 import Hls from 'hls.js';
 import { useContent } from '@lib/api';
+import { youTubeEmbedUrl } from '@lib/video/youtube';
 import { useSelectedProfile } from '@hooks/useSelectedProfile';
 import { useProfileStore } from '@stores/useProfileStore';
 import { startPlayback, heartbeat, endSession, PLAYER_MESSAGES } from '../lib/api/playback';
@@ -15,6 +16,22 @@ const REASON_MESSAGES: Record<string, string> = {
   SUBSCRIPTION_REQUIRED: PLAYER_MESSAGES.SUBSCRIPTION_REQUIRED,
   UNAVAILABLE: PLAYER_MESSAGES.UNAVAILABLE,
 };
+
+const MANIFEST_PATH = '/api/v1/playback/stream/';
+
+/**
+ * The manifests are private and need the bearer token; the segments are
+ * already presigned and live on the storage edge. Sending the token there
+ * makes MinIO reject the URL ("multiple authentication types"), so the
+ * header is attached only to the playback service's own manifest endpoints.
+ */
+function isManifestUrl(url: string): boolean {
+  try {
+    return new URL(url, window.location.href).pathname.startsWith(MANIFEST_PATH);
+  } catch {
+    return false;
+  }
+}
 
 type PlayerStatus = 'ready' | 'starting' | 'playing' | 'blocked' | 'error' | 'loading';
 
@@ -32,6 +49,7 @@ type PlayerStatus = 'ready' | 'starting' | 'playing' | 'blocked' | 'error' | 'lo
  */
 export default function Watch() {
   const { contentId } = useParams<{ contentId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const auth = useAuth();
   const { profiles, selected } = useSelectedProfile();
@@ -39,6 +57,7 @@ export default function Watch() {
 
   const [status, setStatus] = useState<PlayerStatus>('loading');
   const [message, setMessage] = useState<string | null>(null);
+  const [trailerPlaying, setTrailerPlaying] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -57,9 +76,28 @@ export default function Watch() {
 
   const content = data?.content;
   const allowed = data?.playback?.allowed === true;
+  const embedUrl = youTubeEmbedUrl(content?.trailerUrl);
+  const wantsFullPlayback = searchParams.get('full') === '1';
+  const trailerMode = Boolean(embedUrl) && !wantsFullPlayback;
+
+  useEffect(() => {
+    setTrailerPlaying(false);
+    setStatus('loading');
+  }, [contentId]);
 
   useEffect(() => {
     if (isLoading) return;
+    // Trailers are public promotional content: no account, plan or session.
+    if (trailerMode) {
+      setStatus('ready');
+      setMessage(null);
+      // The detail page's CTA arrives with play=1: mount the player without a
+      // second click. The query is only a hint; the button still works.
+      if (searchParams.get('play') === '1') {
+        setTrailerPlaying(true);
+      }
+      return;
+    }
     if (!allowed) {
       setStatus('blocked');
       const reason = data?.playback?.reason;
@@ -68,7 +106,7 @@ export default function Watch() {
       setStatus('ready');
       setMessage(null);
     }
-  }, [isLoading, allowed, data?.playback?.reason]);
+  }, [isLoading, allowed, data?.playback?.reason, trailerMode, searchParams]);
 
   const stop = useCallback(async () => {
     if (heartbeatRef.current) {
@@ -114,10 +152,10 @@ export default function Watch() {
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        // Manifests are private; segments are already signed and are fetched
-        // from the storage edge without credentials.
-        xhrSetup: (xhr) => {
-          if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhrSetup: (xhr, url) => {
+          if (token && isManifestUrl(url)) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
         },
       });
       hls.loadSource(streamPath);
@@ -129,10 +167,14 @@ export default function Watch() {
         video.play().catch(() => {});
       });
       hls.on(Hls.Events.ERROR, (_event, error) => {
-        if (error.fatal) {
-          setStatus('error');
-          setMessage('La reproducción se detuvo. Volvé a intentar.');
-        }
+        if (!error.fatal) return;
+        const status = (error.networkDetails as { status?: number } | undefined)?.status;
+        setStatus('error');
+        setMessage(
+          status === 409
+            ? PLAYER_MESSAGES.CONTENT_NOT_READY
+            : 'La reproducción se detuvo. Volvé a intentar.'
+        );
       });
       hlsRef.current = hls;
       return true;
@@ -187,6 +229,11 @@ export default function Watch() {
     }, 15000);
   };
 
+  const startTrailer = () => {
+    setTrailerPlaying(true);
+    setMessage(null);
+  };
+
   // ────────────────────────────── render ────────────────────────────────
 
   if (status === 'loading') {
@@ -214,8 +261,41 @@ export default function Watch() {
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[2fr_1fr]">
         <div className="overflow-hidden rounded-lg bg-black ring-1 ring-white/10">
-          <video ref={videoRef} className="aspect-video w-full bg-black" playsInline />
-          {status === 'playing' && <PlayerControls videoRef={videoRef} />}
+          {trailerMode ? (
+            trailerPlaying && embedUrl ? (
+              <iframe
+                className="aspect-video w-full"
+                src={embedUrl}
+                title={`Trailer de ${title}`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={startTrailer}
+                aria-label="Ver trailer"
+                className="group relative flex aspect-video w-full items-center justify-center overflow-hidden bg-black"
+              >
+                {content?.backdropUrl && (
+                  <img
+                    src={content.backdropUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover opacity-40"
+                  />
+                )}
+                <span className="relative rounded-full bg-red-600 px-6 py-3 text-lg font-medium text-white transition-colors group-hover:bg-red-500">
+                  ▶ Ver trailer
+                </span>
+              </button>
+            )
+          ) : (
+            <>
+              <video ref={videoRef} className="aspect-video w-full bg-black" playsInline />
+              {status === 'playing' && <PlayerControls videoRef={videoRef} />}
+            </>
+          )}
         </div>
 
         <div>
@@ -223,38 +303,73 @@ export default function Watch() {
           <p className="mt-1 text-sm text-white/50">{subtitle}</p>
           <p className="mt-4 text-sm text-white/70">{content?.synopsis}</p>
 
-          {status === 'playing' && <p className="mt-6 text-sm text-emerald-400">Reproduciendo…</p>}
+          {!trailerMode && status === 'playing' && (
+            <p className="mt-6 text-sm text-emerald-400">Reproduciendo…</p>
+          )}
+          {trailerMode && trailerPlaying && (
+            <p className="mt-6 text-sm text-emerald-400">Trailer oficial</p>
+          )}
 
           {(status === 'ready' || status === 'starting') && (
             <div className="mt-6 space-y-4">
-              {profiles.length > 1 && (
-                <label className="block text-sm text-white/70">
-                  Perfil
-                  <select
-                    value={selected?.id ?? ''}
-                    onChange={(event) => selectProfile(event.target.value)}
-                    className="mt-1 w-full rounded border border-white/20 bg-neutral-950 px-3 py-2 text-white"
+              {trailerMode ? (
+                <>
+                  {!trailerPlaying && (
+                    <Button className="w-full" size="lg" onClick={startTrailer}>
+                      ▶ Ver trailer
+                    </Button>
+                  )}
+                  {content?.trailerUrl && (
+                    <a
+                      href={content.trailerUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block text-center text-xs text-white/50 underline"
+                    >
+                      Ver en YouTube
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  {profiles.length > 1 && (
+                    <label className="block text-sm text-white/70">
+                      Perfil
+                      <select
+                        value={selected?.id ?? ''}
+                        onChange={(event) => selectProfile(event.target.value)}
+                        className="mt-1 w-full rounded border border-white/20 bg-neutral-950 px-3 py-2 text-white"
+                      >
+                        {profiles.map((profile) => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={() => void play()}
+                    disabled={status === 'starting' || !selected?.id}
                   >
-                    {profiles.map((profile) => (
-                      <option key={profile.id} value={profile.id}>
-                        {profile.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => void play()}
-                disabled={status === 'starting' || !selected?.id}
-              >
-                {status === 'starting' ? 'Iniciando…' : '▶ Reproducir'}
-              </Button>
-              {!selected?.id && (
-                <p className="text-xs text-white/50">
-                  Elegí un perfil en la barra superior para reproducir.
-                </p>
+                    {status === 'starting' ? 'Iniciando…' : '▶ Reproducir'}
+                  </Button>
+                  {!selected?.id && (
+                    <p className="text-xs text-white/50">
+                      Elegí un perfil en la barra superior para reproducir.
+                    </p>
+                  )}
+                  {embedUrl && (
+                    <Link
+                      to={`/watch/${contentId}`}
+                      className="block text-center text-xs text-white/50 underline"
+                    >
+                      Ver trailer
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           )}

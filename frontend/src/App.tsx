@@ -40,16 +40,9 @@ export default function App() {
               </RequireAuth>
             }
           />
-          {/* Watching needs an account and an active plan; the page shows the
-              paywall, and playback-service enforces it. */}
-          <Route
-            path="/watch/:contentId"
-            element={
-              <RequireAuth>
-                <Watch />
-              </RequireAuth>
-            }
-          />
+          {/* Trailers are public; full playback still needs an account and an
+              active plan, and both the page and playback-service enforce it. */}
+          <Route path="/watch/:contentId" element={<Watch />} />
         </Routes>
       </main>
       <Footer />

@@ -29,9 +29,11 @@ const CONTENT = {
   credits: [{ personName: 'Timothée Chalamet', role: 'ACTOR' }],
 };
 
-function detail(playback: Record<string, unknown>) {
-  return { isLoading: false, data: { content: CONTENT, playback, degraded: [] } };
+function detail(playback: Record<string, unknown>, content: Record<string, unknown> = CONTENT) {
+  return { isLoading: false, data: { content, playback, degraded: [] } };
 }
+
+const TRAILER = 'https://www.youtube.com/watch?v=Way9Dexny3w';
 
 describe('Detail', () => {
   beforeEach(() => {
@@ -65,13 +67,15 @@ describe('Detail', () => {
     useContent.mockReturnValue(detail({ allowed: false, reason: 'AUTHENTICATION_REQUIRED' }));
     const user = userEvent.setup();
 
-    renderWithProviders(<Detail />, { route: '/title/dune' });
+    renderWithProviders(<Detail />, { route: '/title/dune?from=home' });
     await user.click(screen.getByRole('button', { name: 'Iniciar sesión para ver' }));
 
-    expect(authMock.current.signinRedirect).toHaveBeenCalled();
+    expect(authMock.current.signinRedirect).toHaveBeenCalledWith({
+      state: { returnTo: '/title/dune?from=home' },
+    });
   });
 
-  it('sends a visitor without a plan to the pricing page', () => {
+  it('sends a visitor without a plan to the pricing page when there is no trailer', () => {
     useContent.mockReturnValue(detail({ allowed: false, reason: 'SUBSCRIPTION_REQUIRED' }));
 
     renderWithProviders(<Detail />, { route: '/title/dune' });
@@ -80,6 +84,32 @@ describe('Detail', () => {
       'href',
       '/plans'
     );
+  });
+
+  it('offers the official trailer to a visitor without a plan', async () => {
+    useContent.mockReturnValue(
+      detail(
+        { allowed: false, reason: 'SUBSCRIPTION_REQUIRED' },
+        { ...CONTENT, trailerUrl: TRAILER }
+      )
+    );
+    const user = userEvent.setup();
+
+    renderWithProviders(<Detail />, { route: '/title/dune' });
+
+    expect(screen.queryByRole('link', { name: 'Necesitás un plan' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '▶ Ver trailer' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/watch/a1?play=1');
+  });
+
+  it('keeps full playback as the secondary action for a subscriber', async () => {
+    useContent.mockReturnValue(detail({ allowed: true }, { ...CONTENT, trailerUrl: TRAILER }));
+    const user = userEvent.setup();
+
+    renderWithProviders(<Detail />, { route: '/title/dune' });
+
+    await user.click(screen.getByRole('button', { name: '▶ Reproducir' }));
+    expect(screen.getByTestId('location')).toHaveTextContent('/watch/a1?full=1');
   });
 
   it('admits when the plan could not be verified', () => {

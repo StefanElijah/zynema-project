@@ -1,8 +1,10 @@
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
 import { useContent } from '@lib/api';
 import { useSelectedProfile } from '@hooks/useSelectedProfile';
 import { useWatchlistActions } from '@hooks/useWatchlistActions';
+import { youTubeEmbedUrl } from '@lib/video/youtube';
+import { returnToFromLocation } from '../lib/auth/returnTo';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -21,6 +23,7 @@ function formatRuntime(minutes?: number): string | null {
  */
 export default function Detail() {
   const { idOrSlug } = useParams<{ idOrSlug: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const auth = useAuth();
   const watchlist = useWatchlistActions();
@@ -66,6 +69,7 @@ export default function Detail() {
   const allowed = data?.playback?.allowed === true;
   const reason = data?.playback?.reason;
   const runtime = formatRuntime(content.runtimeMinutes);
+  const hasTrailer = youTubeEmbedUrl(content.trailerUrl) !== null;
 
   const play = () => {
     if (allowed) {
@@ -73,7 +77,7 @@ export default function Detail() {
       return;
     }
     if (reason === 'AUTHENTICATION_REQUIRED') {
-      void auth.signinRedirect();
+      void auth.signinRedirect({ state: { returnTo: returnToFromLocation(location) } });
     }
   };
 
@@ -126,7 +130,22 @@ export default function Detail() {
           {content.synopsis && <p className="mt-5 max-w-2xl text-white/80">{content.synopsis}</p>}
 
           <div className="mt-7 flex flex-wrap gap-3">
-            {reason === 'SUBSCRIPTION_REQUIRED' ? (
+            {hasTrailer ? (
+              <>
+                <Button size="lg" onClick={() => navigate(`/watch/${content.id}?play=1`)}>
+                  ▶ Ver trailer
+                </Button>
+                {allowed && (
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    onClick={() => navigate(`/watch/${content.id}?full=1`)}
+                  >
+                    ▶ Reproducir
+                  </Button>
+                )}
+              </>
+            ) : reason === 'SUBSCRIPTION_REQUIRED' ? (
               <Button size="lg" asChild>
                 <Link to="/plans">{playLabel}</Link>
               </Button>

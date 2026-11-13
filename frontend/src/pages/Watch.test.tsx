@@ -15,7 +15,12 @@ const hlsMock = vi.hoisted(() => ({
   supported: true,
   handlers: {} as Record<string, (...args: unknown[]) => void>,
   config: undefined as
-    | { xhrSetup?: (xhr: { setRequestHeader: (name: string, value: string) => void }) => void }
+    | {
+        xhrSetup?: (
+          xhr: { setRequestHeader: (name: string, value: string) => void },
+          url: string
+        ) => void;
+      }
     | undefined,
   instance: undefined as { destroy: () => void } | undefined,
 }));
@@ -75,6 +80,12 @@ const CONTENT = {
   synopsis: 'Piltover.',
 };
 
+const TRAILER = 'https://www.youtube.com/watch?v=Way9Dexny3w';
+
+function withTrailer() {
+  return { ...CONTENT, trailerUrl: TRAILER };
+}
+
 function content(playback: Record<string, unknown>, extra: Record<string, unknown> = {}) {
   return { isLoading: false, data: { content: CONTENT, playback, degraded: [], ...extra } };
 }
@@ -119,6 +130,56 @@ describe('Watch', () => {
     renderWithProviders(<Watch />, { route: '/watch/a2' });
 
     expect(screen.getByText('Iniciá sesión para reproducir este título.')).toBeInTheDocument();
+  });
+
+  it('plays the public trailer even when the account has no plan', async () => {
+    useContent.mockReturnValue(
+      content({ allowed: false, reason: 'SUBSCRIPTION_REQUIRED' }, { content: withTrailer() })
+    );
+    const user = userEvent.setup();
+
+    renderWithProviders(<Watch />, { route: '/watch/a2' });
+
+    expect(
+      screen.queryByText('Necesitás una suscripción activa para ver este título.')
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: /Ver trailer/ })[0]);
+
+    expect(await screen.findByTitle('Trailer de Arcane')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/Way9Dexny3w?autoplay=1&rel=0'
+    );
+    expect(startPlayback).not.toHaveBeenCalled();
+  });
+
+  it('starts the trailer directly when the detail CTA passes play=1', async () => {
+    useContent.mockReturnValue(
+      content({ allowed: false, reason: 'SUBSCRIPTION_REQUIRED' }, { content: withTrailer() })
+    );
+
+    renderWithProviders(<Watch />, { route: '/watch/a2?play=1' });
+
+    expect(await screen.findByTitle('Trailer de Arcane')).toHaveAttribute(
+      'src',
+      'https://www.youtube-nocookie.com/embed/Way9Dexny3w?autoplay=1&rel=0'
+    );
+    expect(startPlayback).not.toHaveBeenCalled();
+  });
+
+  it('keeps the full playback behind ?full=1 when a trailer exists', async () => {
+    useContent.mockReturnValue(content({ allowed: true }, { content: withTrailer() }));
+    startPlayback.mockResolvedValue({
+      ok: true,
+      session: { id: 's1', streamPath: '/streams/s1/master.m3u8' },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Watch />, { route: '/watch/a2?full=1' });
+    await user.click(screen.getByRole('button', { name: '▶ Reproducir' }));
+
+    await screen.findByText('Reproduciendo…');
+    expect(startPlayback).toHaveBeenCalledWith({ profileId: 'p1', contentId: 'a2' });
   });
 
   it('starts a session and plays when the account may watch', async () => {
@@ -238,9 +299,30 @@ describe('Watch', () => {
     await screen.findByText('Reproduciendo…');
 
     const setRequestHeader = vi.fn();
-    hlsMock.config?.xhrSetup?.({ setRequestHeader });
+    hlsMock.config?.xhrSetup?.({ setRequestHeader }, '/api/v1/playback/stream/s1/master.m3u8');
 
     expect(setRequestHeader).toHaveBeenCalledWith('Authorization', 'Bearer token');
+  });
+
+  it('does not send the token to presigned segment URLs', async () => {
+    useContent.mockReturnValue(content({ allowed: true }));
+    startPlayback.mockResolvedValue({
+      ok: true,
+      session: { id: 's1', streamPath: '/streams/s1/master.m3u8' },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Watch />, { route: '/watch/a2' });
+    await user.click(screen.getByRole('button', { name: '▶ Reproducir' }));
+    await screen.findByText('Reproduciendo…');
+
+    const setRequestHeader = vi.fn();
+    hlsMock.config?.xhrSetup?.(
+      { setRequestHeader },
+      'http://localhost:8090/minio/zynema-hls/hls/contents/x/240p/segment_00000.ts?X-Amz-Signature=sig'
+    );
+
+    expect(setRequestHeader).not.toHaveBeenCalled();
   });
 
   it('reports a fatal playback error from HLS', async () => {
@@ -260,6 +342,27 @@ describe('Watch', () => {
     });
 
     expect(screen.getByText('La reproducción se detuvo. Volvé a intentar.')).toBeInTheDocument();
+  });
+
+  it('explains a 409 manifest response as a title without a rendition', async () => {
+    useContent.mockReturnValue(content({ allowed: true }));
+    startPlayback.mockResolvedValue({
+      ok: true,
+      session: { id: 's1', streamPath: '/streams/s1/master.m3u8' },
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Watch />, { route: '/watch/a2' });
+    await user.click(screen.getByRole('button', { name: '▶ Reproducir' }));
+    await screen.findByText('Reproduciendo…');
+
+    act(() => {
+      hlsMock.handlers['error']?.({}, { fatal: true, networkDetails: { status: 409 } });
+    });
+
+    expect(
+      screen.getByText('Este título todavía no tiene una versión para reproducir.')
+    ).toBeInTheDocument();
   });
 
   it('closes the session when leaving the page', async () => {
