@@ -36,10 +36,10 @@ Status legend: `[x]` done · `[~]` in progress · `[ ]` pending
 - [x] Repaired 5 malformed `application.yml` files; every service now has a
       Testcontainers-backed context test
 - [x] Husky hooks wired (pre-commit → lint-staged, commit-msg → commitlint)
-- [x] `catalog-service`: Flyway V1–V3, 52 titles seeded (28 movies, 24 series,
-      15 genres, 72 people, 80 credits, 80 seasons, 48 episodes),
-      REST `/api/v1/catalog/**`, typed-JSON Redis cache (ADR-0013),
-      36 tests
+- [x] `catalog-service`: Flyway V1–V9, 71 titles seeded (47 movies, 24 series,
+      15 genres, 138 people, 196 credits, 80 seasons, 48 episodes, 13 sagas
+      with 38 memberships), REST `/api/v1/catalog/**`, typed-JSON Redis cache
+      (ADR-0013), saga read endpoints and tests
 - [x] `user-service`: Flyway V1–V2 (users, profiles, watchlist, watch history),
       REST `/api/v1/users/**`, idempotent progress upsert, 33 tests
 - [x] Gateway routes aligned with the versioned public API and verified

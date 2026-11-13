@@ -225,12 +225,13 @@ usable immediately:
 | Data                               | Count                                   |
 | ---------------------------------- | --------------------------------------- |
 | Genres                             | 15                                      |
-| Titles (28 movies + 24 series)     | 52                                      |
-| People / credits                   | 72 / 80                                 |
+| Titles (47 movies + 24 series)     | 71                                      |
+| People / credits                   | 138 / 196                               |
+| Sagas / memberships                | 13 / 38                                 |
 | Seasons / episodes                 | 80 / 48                                 |
 | Seeded account (`demo@zynema.dev`) | 1 user, 2 profiles, watchlist + history |
 
-The 26 titles that ship with local artwork under `frontend/public/assets/`
+The 53 titles that ship with local artwork under `frontend/public/assets/`
 carry real poster/backdrop paths; the rest have `null` assets on purpose, which
 exercises the frontend's fallback handling.
 
@@ -261,19 +262,19 @@ you a working IdP plus three users.
 
 **Authorization matrix**
 
-| Endpoint                                                      | Rule                                                                |
-| ------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `GET /api/v1/catalog/**`                                      | anonymous                                                           |
-| `/api/v1/catalog/admin/**`                                    | role `content-manager` or `admin`                                   |
-| `/api/v1/auth/public/**`                                      | anonymous                                                           |
-| `/api/v1/auth/me`                                             | authenticated                                                       |
-| `/api/v1/users/me`, `/api/v1/users/me/**`                     | authenticated (identity from the token)                             |
-| `/api/v1/users/**` (id-addressed)                             | role `admin`                                                        |
-| `/api/v1/web/home`, `/api/v1/web/catalog/**` (BFF reads)      | public                                                              |
-| `/api/v1/web/account`, `/api/v1/web/profiles/**` (BFF)        | authenticated                                                       |
-| `GET /api/v1/playback/stream/**` (HLS manifests)              | authenticated + session ownership                                   |
-| `/api/v1/playback/**`                                         | authenticated; watching also needs an active plan (`402` otherwise) |
-| `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**` | anonymous                                                           |
+| Endpoint                                                                              | Rule                                                                |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `GET /api/v1/catalog/**`                                                              | anonymous                                                           |
+| `/api/v1/catalog/admin/**`                                                            | role `content-manager` or `admin`                                   |
+| `/api/v1/auth/public/**`                                                              | anonymous                                                           |
+| `/api/v1/auth/me`                                                                     | authenticated                                                       |
+| `/api/v1/users/me`, `/api/v1/users/me/**`                                             | authenticated (identity from the token)                             |
+| `/api/v1/users/**` (id-addressed)                                                     | role `admin`                                                        |
+| `/api/v1/web/home`, `/api/v1/web/catalog/**`, `/api/v1/web/franchises/**` (BFF reads) | public                                                              |
+| `/api/v1/web/account`, `/api/v1/web/profiles/**` (BFF)                                | authenticated                                                       |
+| `GET /api/v1/playback/stream/**` (HLS manifests)                                      | authenticated + session ownership                                   |
+| `/api/v1/playback/**`                                                                 | authenticated; watching also needs an active plan (`402` otherwise) |
+| `/actuator/health`, `/actuator/prometheus`, `/v3/api-docs/**`                         | anonymous                                                           |
 
 Errors use the same `ApiError` envelope as the rest of the API: a missing token
 is `401`, a valid token without the required role is `403`, and a signed-in
