@@ -39,7 +39,12 @@ public class SubscriptionQueryService {
 
     public SubscriptionDto currentSubscription(Jwt jwt) {
         UUID userId = currentAccountService.resolveUserId(jwt);
+        Instant now = Instant.now();
         Subscription subscription = activeSubscription(userId)
+            // Same rule as entitlements: a period that ended is not current
+            // access. Reporting it as active would tell the account screen the
+            // opposite of what the paywall enforces.
+            .filter(candidate -> candidate.grantsAccessAt(now))
             .orElseThrow(() -> new ResourceNotFoundException("Active subscription for account", userId));
         return withLatestNotificationFailure(mapper.toDto(subscription));
     }

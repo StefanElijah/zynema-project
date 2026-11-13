@@ -187,6 +187,46 @@ class SubscriptionApiTests extends AbstractPaymentIntegrationTest {
     }
 
     @Test
+    @DisplayName("a lapsed subscription is closed and replaced when the account renews")
+    void lapsedSubscriptionCanBeRenewed() throws Exception {
+        UUID previousId = UUID.fromString(subscribe(BASIC_PLAN, "key-lapsed-first"));
+        expire(previousId);
+
+        UUID renewedId = UUID.fromString(subscribe(PREMIUM_PLAN, "key-lapsed-renew"));
+        assertThat(renewedId).isNotEqualTo(previousId);
+
+        Subscription previous = subscriptionRepository.findById(previousId).orElseThrow();
+        assertThat(previous.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
+        assertThat(previous.getCanceledAt()).isNotNull();
+
+        Subscription renewed = subscriptionRepository.findById(renewedId).orElseThrow();
+        assertThat(renewed.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(renewed.getCurrentPeriodEnd()).isAfter(Instant.now());
+        assertThat(subscriptionRepository.count()).isEqualTo(2);
+        assertThat(paymentRepository.count()).isEqualTo(2);
+
+        mockMvc.perform(get("/api/v1/payments/subscriptions/me/entitlements").with(asDemo()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.active", is(true)))
+            .andExpect(jsonPath("$.planCode", is("premium")));
+    }
+
+    @Test
+    @DisplayName("a lapsed subscription is not the current one and grants no access")
+    void lapsedSubscriptionIsNotCurrent() throws Exception {
+        UUID id = UUID.fromString(subscribe(BASIC_PLAN, "key-lapsed-current"));
+        expire(id);
+
+        mockMvc.perform(get("/api/v1/payments/subscriptions/me").with(asDemo()))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/payments/subscriptions/me/entitlements").with(asDemo()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.active", is(false)))
+            .andExpect(jsonPath("$.planCode", is("free")));
+    }
+
+    @Test
     @DisplayName("an unknown plan is a 404 and does not leave a reserved key behind")
     void unknownPlanIsNotFoundAndReleasesTheKey() throws Exception {
         mockMvc.perform(post("/api/v1/payments/subscriptions").with(asDemo())
@@ -339,6 +379,14 @@ class SubscriptionApiTests extends AbstractPaymentIntegrationTest {
     private static org.springframework.test.web.servlet.request.RequestPostProcessor asSubject(String subject) {
         return jwt().jwt(jwt -> jwt.subject(subject).claim("email", subject + "@zynema.dev"))
             .authorities(new SimpleGrantedAuthority("ROLE_user"));
+    }
+
+    /** Moves the subscription's period into the past, as time would. */
+    private void expire(UUID subscriptionId) {
+        Subscription subscription = subscriptionRepository.findById(subscriptionId).orElseThrow();
+        subscription.setCurrentPeriodStart(Instant.now().minusSeconds(2 * 86_400));
+        subscription.setCurrentPeriodEnd(Instant.now().minusSeconds(86_400));
+        subscriptionRepository.saveAndFlush(subscription);
     }
 
     private String subscribe(String planId, String key) throws Exception {

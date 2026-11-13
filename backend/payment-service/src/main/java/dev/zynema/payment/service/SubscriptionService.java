@@ -46,11 +46,9 @@ public class SubscriptionService {
             .filter(Plan::isActive)
             .orElseThrow(() -> new ResourceNotFoundException("Plan", planId));
 
-        if (subscriptionRepository.findWithPlanByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE).isPresent()) {
-            throw new ConflictException("This account already has an active subscription");
-        }
-
         Instant now = Instant.now();
+        subscriptionRepository.findWithPlanByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE)
+            .ifPresent(existing -> closeIfLapsed(existing, now));
         Subscription subscription = new Subscription();
         subscription.setUserId(userId);
         subscription.setPlan(plan);
@@ -107,6 +105,23 @@ public class SubscriptionService {
                 saved.getCanceledAt()));
 
         return saved;
+    }
+
+    /**
+     * A subscription whose period has ended is still stored as ACTIVE until
+     * something settles it. Refusing a new one would deadlock the account:
+     * entitlements already deny access by date, so it could neither watch nor
+     * subscribe again. Renewal therefore closes the lapsed row first;
+     * {@code saveAndFlush} runs that UPDATE before the INSERT so the partial
+     * unique index never sees two ACTIVE rows.
+     */
+    private void closeIfLapsed(Subscription subscription, Instant now) {
+        if (subscription.grantsAccessAt(now)) {
+            throw new ConflictException("This account already has an active subscription");
+        }
+        subscription.setStatus(SubscriptionStatus.CANCELED);
+        subscription.setCanceledAt(now);
+        subscriptionRepository.saveAndFlush(subscription);
     }
 
     private Instant periodEnd(Instant start, Plan plan) {
