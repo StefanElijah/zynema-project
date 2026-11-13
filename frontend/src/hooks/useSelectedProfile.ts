@@ -7,6 +7,25 @@ export interface SelectedProfile {
   profiles: Profile[];
   selected: Profile | null;
   isLoading: boolean;
+  isError: boolean;
+}
+
+const EMPTY_PROFILES: Profile[] = [];
+
+function isProfileList(value: unknown): value is Profile[] {
+  return (
+    Array.isArray(value) &&
+    value.every((profile) => {
+      if (typeof profile !== 'object' || profile === null || Array.isArray(profile)) {
+        return false;
+      }
+      const candidate = profile as { id?: unknown; name?: unknown };
+      return (
+        (candidate.id === undefined || typeof candidate.id === 'string') &&
+        (candidate.name === undefined || typeof candidate.name === 'string')
+      );
+    })
+  );
 }
 
 /**
@@ -22,25 +41,30 @@ export function useSelectedProfile(): SelectedProfile {
   const selectedProfileId = useProfileStore((state) => state.selectedProfileId);
   const select = useProfileStore((state) => state.select);
 
-  const { data: profiles = [], isLoading } = useProfiles({
+  const { data, isLoading, isError } = useProfiles({
     query: { enabled: auth.isAuthenticated },
   });
+  const validProfiles = isProfileList(data);
+  const profiles = validProfiles ? data : EMPTY_PROFILES;
+  const invalidResponse = auth.isAuthenticated && !isLoading && !validProfiles;
+  const profilesError = isError || invalidResponse;
 
   useEffect(() => {
     // The generated types keep properties optional (the OpenAPI document does
     // not mark them required); an id-less profile is not selectable at all.
     const first = profiles[0];
-    if (isLoading || !first?.id) {
+    if (isLoading || profilesError || !first?.id) {
       return;
     }
     if (!profiles.some((profile) => profile.id === selectedProfileId)) {
       select(first.id);
     }
-  }, [profiles, isLoading, selectedProfileId, select]);
+  }, [profiles, isLoading, profilesError, selectedProfileId, select]);
 
   return {
     profiles,
     selected: profiles.find((profile) => profile.id === selectedProfileId) ?? null,
     isLoading,
+    isError: profilesError,
   };
 }

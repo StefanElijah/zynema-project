@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from 'react-oidc-context';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAccountQueryKey, useAccount, usePlans, useSubscribe } from '@lib/api';
+import { returnToFromLocation } from '../lib/auth/returnTo';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -26,6 +27,7 @@ function formatPrice(price?: number, currency?: string, period?: string): string
  */
 export default function Plans() {
   const auth = useAuth();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [idempotencyKey] = useState(() => crypto.randomUUID());
 
@@ -44,7 +46,7 @@ export default function Plans() {
 
   const start = (planId?: string) => {
     if (!auth.isAuthenticated) {
-      void auth.signinRedirect({ state: { returnTo: '/plans' } });
+      void auth.signinRedirect({ state: { returnTo: returnToFromLocation(location) } });
       return;
     }
     if (planId) {

@@ -34,7 +34,7 @@ describe('playback client', () => {
       episodeId: 'episode-1',
     });
 
-    expect(apiClient.post).toHaveBeenCalledWith('/playback/sessions', {
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/playback/sessions', {
       profileId: 'profile-1',
       contentId: 'arcane',
       episodeId: 'episode-1',
@@ -73,7 +73,7 @@ describe('playback client', () => {
     vi.mocked(apiClient.put).mockRejectedValue(new Error('offline'));
 
     await expect(heartbeat('session-1', 42)).resolves.toBe(false);
-    expect(apiClient.put).toHaveBeenCalledWith('/playback/sessions/session-1/position', {
+    expect(apiClient.put).toHaveBeenCalledWith('/api/v1/playback/sessions/session-1/position', {
       positionSeconds: 42,
     });
   });
@@ -88,7 +88,7 @@ describe('playback client', () => {
     vi.mocked(apiClient.post).mockResolvedValue(responseWith({}));
 
     await expect(endSession('session-1', 120)).resolves.toBe(true);
-    expect(apiClient.post).toHaveBeenCalledWith('/playback/sessions/session-1/end', {
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/playback/sessions/session-1/end', {
       positionSeconds: 120,
     });
   });

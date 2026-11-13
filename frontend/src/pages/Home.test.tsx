@@ -21,9 +21,19 @@ const HOME = {
   hero: { card: { id: 'a2', slug: 'arcane', title: 'Arcane' }, synopsis: 'Piltover y Zaun.' },
   rows: [
     {
+      id: 'new-releases',
+      title: 'Estrenos',
+      items: [{ id: 'a3', title: 'Dune: Part Two', releaseYear: 2024 }],
+    },
+    {
       id: 'popular-series',
       title: 'Series populares',
       items: [{ id: 'a2', title: 'Arcane', releaseYear: 2021 }],
+    },
+    {
+      id: 'popular-movies',
+      title: 'Películas populares',
+      items: [{ id: 'a3', title: 'Dune: Part Two', releaseYear: 2024 }],
     },
   ],
 };
@@ -54,6 +64,22 @@ describe('Home', () => {
     expect(refetch).toHaveBeenCalled();
   });
 
+  it('reports and retries an invalid successful response instead of rendering an empty page', async () => {
+    const refetch = vi.fn();
+    useHome.mockReturnValue({
+      isLoading: false,
+      data: '<!doctype html><html></html>',
+      refetch,
+    });
+    const user = userEvent.setup();
+
+    renderWithProviders(<Home />);
+
+    expect(screen.getByText('No pudimos cargar el catálogo.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(refetch).toHaveBeenCalled();
+  });
+
   it('renders the hero and the rails the BFF composed', () => {
     useHome.mockReturnValue({ isLoading: false, data: HOME });
 
@@ -63,5 +89,25 @@ describe('Home', () => {
     expect(screen.getByText('Piltover y Zaun.')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Series populares' })).toBeInTheDocument();
     expect(screen.getByRole('img', { name: 'Arcane' })).toBeInTheDocument();
+  });
+
+  it('sends each typed rail to the catalogue and leaves the mixed rail without a link', () => {
+    useHome.mockReturnValue({ isLoading: false, data: HOME });
+
+    renderWithProviders(<Home />);
+
+    expect(screen.getByRole('link', { name: 'Explorar catálogo' })).toHaveAttribute(
+      'href',
+      '/catalog'
+    );
+    expect(screen.getByRole('link', { name: 'Ver todo Series populares' })).toHaveAttribute(
+      'href',
+      '/catalog?type=SERIES'
+    );
+    expect(screen.getByRole('link', { name: 'Ver todo Películas populares' })).toHaveAttribute(
+      'href',
+      '/catalog?type=MOVIE'
+    );
+    expect(screen.queryByRole('link', { name: /Ver todo Estrenos/ })).not.toBeInTheDocument();
   });
 });

@@ -1,5 +1,7 @@
 import { ReactNode } from 'react';
 import { useAuth } from 'react-oidc-context';
+import { useLocation } from 'react-router-dom';
+import { returnToFromLocation } from '../lib/auth/returnTo';
 
 /**
  * Gate for routes that need a signed-in user.
@@ -9,6 +11,8 @@ import { useAuth } from 'react-oidc-context';
  */
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const auth = useAuth();
+  const location = useLocation();
+  const returnTo = returnToFromLocation(location);
 
   if (auth.isLoading) {
     return (
@@ -25,7 +29,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
         <p className="max-w-md text-sm text-white/60">{auth.error.message}</p>
         <button
           type="button"
-          onClick={() => auth.signinRedirect()}
+          onClick={() => auth.signinRedirect({ state: { returnTo } })}
           className="rounded bg-red-600 px-6 py-2 font-medium text-white hover:bg-red-500"
         >
           Volver a intentar
@@ -43,7 +47,7 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
         </p>
         <button
           type="button"
-          onClick={() => auth.signinRedirect()}
+          onClick={() => auth.signinRedirect({ state: { returnTo } })}
           className="rounded bg-red-600 px-6 py-2 font-medium text-white hover:bg-red-500"
         >
           Iniciar sesión

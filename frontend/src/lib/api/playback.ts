@@ -66,6 +66,8 @@ export interface StartPlaybackRequest {
   device?: string;
 }
 
+const API_PREFIX = '/api/v1';
+
 export async function startPlayback({
   profileId,
   contentId,
@@ -73,12 +75,15 @@ export async function startPlayback({
   device = 'web',
 }: StartPlaybackRequest): Promise<PlaybackResult> {
   try {
-    const response: AxiosResponse<PlaybackSession> = await apiClient.post('/playback/sessions', {
-      profileId,
-      contentId,
-      episodeId,
-      device,
-    });
+    const response: AxiosResponse<PlaybackSession> = await apiClient.post(
+      `${API_PREFIX}/playback/sessions`,
+      {
+        profileId,
+        contentId,
+        episodeId,
+        device,
+      }
+    );
     return { ok: true, session: response.data };
   } catch (error) {
     return { ok: false, ...describePlaybackFailure(error) };
@@ -91,7 +96,9 @@ export async function startPlayback({
  */
 export async function heartbeat(sessionId: string, positionSeconds: number): Promise<boolean> {
   try {
-    await apiClient.put(`/playback/sessions/${sessionId}/position`, { positionSeconds });
+    await apiClient.put(`${API_PREFIX}/playback/sessions/${sessionId}/position`, {
+      positionSeconds,
+    });
     return true;
   } catch {
     return false;
@@ -100,7 +107,7 @@ export async function heartbeat(sessionId: string, positionSeconds: number): Pro
 
 export async function endSession(sessionId: string, positionSeconds: number): Promise<boolean> {
   try {
-    await apiClient.post(`/playback/sessions/${sessionId}/end`, { positionSeconds });
+    await apiClient.post(`${API_PREFIX}/playback/sessions/${sessionId}/end`, { positionSeconds });
     return true;
   } catch {
     return false;

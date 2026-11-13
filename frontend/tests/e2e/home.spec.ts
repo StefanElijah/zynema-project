@@ -48,6 +48,32 @@ test('home renders the hero and the rails the BFF composed', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Series populares' })).toBeVisible();
 });
 
+test('a home rail links to the filtered catalogue', async ({ page }) => {
+  await page.route('**/api/v1/web/home', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(HOME) })
+  );
+  await page.route(/\/api\/v1\/web\/catalog\?/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        content: [],
+        page: 0,
+        size: 24,
+        totalElements: 0,
+        totalPages: 0,
+        first: true,
+        last: true,
+      }),
+    })
+  );
+
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Ver todo Series populares' }).click();
+
+  await expect(page).toHaveURL(/\/catalog\?type=SERIES/);
+});
+
 test('home says so when the catalogue is down, and retries', async ({ page }) => {
   // Down until the user acts: React Query's own retry must not mask the error
   // state this test exists to check.

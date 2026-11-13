@@ -36,13 +36,13 @@ function asResponse(config: InternalAxiosRequestConfig, data: unknown): AxiosRes
   return { data, status: 200, statusText: 'OK', headers: {}, config };
 }
 
-function renderNavbar() {
+function renderNavbar(route = '/') {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[route]}>
         <AppNavbar />
       </MemoryRouter>
     </QueryClientProvider>
@@ -70,6 +70,42 @@ describe('AppNavbar', () => {
     expect(screen.getByRole('button', { name: 'Iniciar sesión' })).toBeInTheDocument();
   });
 
+  it('offers the catalogue from the mobile menu', async () => {
+    authMock.current = { isLoading: false, isAuthenticated: false, signinRedirect: vi.fn() };
+    const user = userEvent.setup();
+
+    renderNavbar();
+
+    await user.click(screen.getByRole('button', { name: 'Menú' }));
+
+    expect(await screen.findByRole('menuitem', { name: 'Catálogo' })).toHaveAttribute(
+      'href',
+      '/catalog'
+    );
+    expect(screen.getByRole('menuitem', { name: 'Series' })).toHaveAttribute(
+      'href',
+      '/catalog?type=SERIES'
+    );
+    expect(screen.getByRole('menuitem', { name: 'Películas' })).toHaveAttribute(
+      'href',
+      '/catalog?type=MOVIE'
+    );
+  });
+
+  it('preserves the current route when the visitor starts sign-in from the navbar', async () => {
+    const signinRedirect = vi.fn();
+    authMock.current = { isLoading: false, isAuthenticated: false, signinRedirect };
+    const user = userEvent.setup();
+
+    renderNavbar('/catalog?type=SERIES');
+
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+
+    expect(signinRedirect).toHaveBeenCalledWith({
+      state: { returnTo: '/catalog?type=SERIES' },
+    });
+  });
+
   it('selects the first profile once the account has one', async () => {
     authMock.current = {
       isLoading: false,
@@ -81,6 +117,23 @@ describe('AppNavbar', () => {
     renderNavbar();
 
     await waitFor(() => expect(useProfileStore.getState().selectedProfileId).toBe(DEMO_PROFILE));
+  });
+
+  it('keeps the navbar usable and reports a non-array profiles response', async () => {
+    authMock.current = {
+      isLoading: false,
+      isAuthenticated: true,
+      user: { profile: { preferred_username: 'demo' } },
+      signoutRedirect: vi.fn(),
+    };
+    AXIOS_INSTANCE.defaults.adapter = async (config) =>
+      asResponse(config, '<!doctype html><html><body>SPA</body></html>');
+    const user = userEvent.setup();
+
+    renderNavbar();
+
+    await user.click(screen.getByRole('button', { name: 'Perfil' }));
+    expect(await screen.findByText('No se pudieron cargar los perfiles.')).toBeInTheDocument();
   });
 
   it('switches profiles from the menu and clears the choice on sign out', async () => {

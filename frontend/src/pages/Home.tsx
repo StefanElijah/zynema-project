@@ -1,9 +1,35 @@
 import { useNavigate } from 'react-router-dom';
-import { useHome } from '@lib/api';
+import { useHome, type HomeView } from '@lib/api';
 import HeroSection from '../components/organisms/HeroSection';
 import ContentSection from '../components/organisms/ContentSection';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
+
+/**
+ * "Ver todo" destinations per BFF row id. The mixed "new-releases" rail has no
+ * single type, and the browse endpoint requires one, so it stays link-free.
+ */
+const CATALOG_LINKS: Record<string, string> = {
+  'popular-series': '/catalog?type=SERIES',
+  'popular-movies': '/catalog?type=MOVIE',
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isHomeView(value: unknown): value is HomeView {
+  if (!isRecord(value) || !isRecord(value.hero) || !isRecord(value.hero.card)) {
+    return false;
+  }
+
+  const card = value.hero.card;
+  return (
+    typeof card.title === 'string' &&
+    Array.isArray(value.rows) &&
+    value.rows.every((row) => isRecord(row) && Array.isArray(row.items))
+  );
+}
 
 function HomeSkeleton() {
   return (
@@ -32,12 +58,13 @@ function HomeSkeleton() {
 export default function Home() {
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useHome();
+  const invalidResponse = !isLoading && !isHomeView(data);
 
   if (isLoading) {
     return <HomeSkeleton />;
   }
 
-  if (isError) {
+  if (isError || invalidResponse) {
     return (
       <div className="py-24 text-center">
         <p className="text-red-400">No pudimos cargar el catálogo.</p>
@@ -59,10 +86,16 @@ export default function Home() {
         backdropUrl={heroCard?.backdropUrl ?? heroCard?.posterUrl}
         detailPath={heroCard?.id ? `/title/${heroCard.slug ?? heroCard.id}` : undefined}
         onPlay={heroCard?.id ? () => navigate(`/watch/${heroCard.id}`) : undefined}
+        explorePath="/catalog"
       />
 
       {data?.rows?.map((row) => (
-        <ContentSection key={row.id} title={row.title ?? ''} items={row.items ?? []} />
+        <ContentSection
+          key={row.id}
+          title={row.title ?? ''}
+          items={row.items ?? []}
+          moreHref={row.id ? CATALOG_LINKS[row.id] : undefined}
+        />
       ))}
     </>
   );

@@ -1,8 +1,21 @@
 import { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 import { AXIOS_INSTANCE } from '@zynema/api-contracts';
 import { userManager } from '../auth/userManager';
+import { returnToFromLocation } from '../auth/returnTo';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+/**
+ * Generated OpenAPI operations already contain `/api/v1` in their paths. Treat
+ * the configurable value as an origin only, so a legacy `/api/v1` value cannot
+ * duplicate the version prefix when Axios combines it with a generated path.
+ */
+export function resolveApiOrigin(
+  configuredOrigin: string | undefined,
+  currentOrigin: string
+): string {
+  return configuredOrigin ? new URL(configuredOrigin, currentOrigin).origin : currentOrigin;
+}
+
+const baseURL = resolveApiOrigin(import.meta.env.VITE_API_BASE_URL, window.location.origin);
 
 /**
  * The one axios instance of the app.
@@ -34,7 +47,21 @@ apiClient.interceptors.request.use(async (config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const contentType = String(response.headers['content-type'] ?? '');
+    if (typeof response.data === 'string' && contentType.includes('text/html')) {
+      return Promise.reject(
+        new AxiosError(
+          'La API respondió HTML en lugar de JSON. Revisa el proxy /api del frontend.',
+          AxiosError.ERR_BAD_RESPONSE,
+          response.config,
+          response.request,
+          response
+        )
+      );
+    }
+    return response;
+  },
   async (error: AxiosError) => {
     const status = error.response?.status;
     const original = error.config as RetriableConfig | undefined;
@@ -47,7 +74,9 @@ apiClient.interceptors.response.use(
     const user = await userManager.getUser();
     if (!user) {
       // Nobody is signed in: send the user through the login flow.
-      await userManager.signinRedirect({ state: { returnTo: window.location.pathname } });
+      await userManager.signinRedirect({
+        state: { returnTo: returnToFromLocation(window.location) },
+      });
       return Promise.reject(error);
     }
 
@@ -57,7 +86,9 @@ apiClient.interceptors.response.use(
       original.headers.Authorization = `Bearer ${renewed?.access_token ?? ''}`;
       return apiClient.request(original);
     } catch (renewError) {
-      await userManager.signinRedirect({ state: { returnTo: window.location.pathname } });
+      await userManager.signinRedirect({
+        state: { returnTo: returnToFromLocation(window.location) },
+      });
       return Promise.reject(renewError);
     }
   }

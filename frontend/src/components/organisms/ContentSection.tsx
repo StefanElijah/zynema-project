@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ChevronRight } from 'lucide-react';
 import ContentCard from '../molecules/ContentCard';
 import type { TitleCard } from '@lib/api';
 import { useWatchlistActions } from '@hooks/useWatchlistActions';
@@ -9,6 +10,9 @@ interface ContentSectionProps {
   items?: TitleCard[];
   containerClass?: string;
   customMargins?: boolean;
+  /** When present, the header links to the full, filtered catalogue view. */
+  moreHref?: string;
+  moreLabel?: string;
 }
 
 /**
@@ -23,6 +27,8 @@ export default function ContentSection({
   items = [],
   containerClass = 'custom-container',
   customMargins = true,
+  moreHref,
+  moreLabel = 'Ver todo',
 }: ContentSectionProps) {
   const navigate = useNavigate();
   const watchlist = useWatchlistActions();
@@ -34,7 +40,21 @@ export default function ContentSection({
   return (
     <section className={`content-section ${customMargins ? 'with-custom-margins' : ''}`}>
       <div className={containerClass}>
-        {title && <h2 className="section-title mb-4">{title}</h2>}
+        {(title || moreHref) && (
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="section-title">{title}</h2>
+            {moreHref && (
+              <Link
+                to={moreHref}
+                aria-label={title ? `${moreLabel} ${title}` : moreLabel}
+                className="flex shrink-0 items-center gap-1 text-sm text-white/60 transition hover:text-white"
+              >
+                {moreLabel}
+                <ChevronRight className="size-4" aria-hidden="true" />
+              </Link>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
           {items.map((item) => (
             <div key={item.id} className="mb-3">

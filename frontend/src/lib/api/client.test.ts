@@ -11,7 +11,7 @@ vi.mock('../auth/userManager', () => ({
 }));
 
 const { userManager } = await import('../auth/userManager');
-const { apiClient } = await import('./client');
+const { apiClient, resolveApiOrigin } = await import('./client');
 
 const okResponse = (config: InternalAxiosRequestConfig, data?: unknown): AxiosResponse => ({
   data: data ?? { ok: true },
@@ -35,6 +35,33 @@ const partialUser = (accessToken: string | null, expired = false): User =>
 describe('api client interceptors', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('uses only the API origin because generated operations include /api/v1', () => {
+    const origin = 'http://localhost:5173';
+
+    expect(resolveApiOrigin('/api/v1', origin)).toBe(origin);
+    expect(resolveApiOrigin('https://api.example.test/api/v1', origin)).toBe(
+      'https://api.example.test'
+    );
+
+    const requestUrl = new URL(apiClient.getUri({ url: '/api/v1/web/profiles' }), origin);
+    expect(requestUrl.pathname).toBe('/api/v1/web/profiles');
+  });
+
+  it('rejects successful HTML responses instead of exposing them as API data', async () => {
+    apiClient.defaults.adapter = async (config) => ({
+      data: '<!doctype html><html><body><div id="root"></div></body></html>',
+      status: 200,
+      statusText: 'OK',
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+      config,
+    });
+
+    await expect(apiClient.get('/api/v1/web/profiles')).rejects.toMatchObject({
+      code: 'ERR_BAD_RESPONSE',
+      message: 'La API respondió HTML en lugar de JSON. Revisa el proxy /api del frontend.',
+    });
   });
 
   it('attaches the access token to every request', async () => {

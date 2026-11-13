@@ -605,20 +605,33 @@ migration edit is not picked up by an incremental build — recompile with
 
 ## "Frontend shows 'Network Error' on /api calls"
 
-1. The Vite dev server proxies `/api` to `http://localhost:8080` (the
-   gateway), which forwards `/api/v1/**` to the services and
-   `/api/v1/web/**` to the BFF. Make sure both are running:
+1. For `pnpm dev`, Vite proxies `/api` to `http://localhost:8080`. For the
+   Docker frontend (`localhost:5173`, Nginx), `/api/` is proxied to the Compose
+   service `api-gateway:8080`; rebuild the `frontend` image after changing
+   `infra/nginx/frontend.conf`. Both proxies preserve `/api/v1/...` unchanged.
+   The generated client already includes that prefix, so
+   `VITE_API_BASE_URL` must be blank or an origin, never `/api/v1`.
+2. Check the browser Network panel: `/api/v1/web/home` must return JSON, not
+   `index.html` with `Content-Type: text/html`. The profile endpoint is private;
+   a request without a token should return a JSON `401`, not the SPA document.
+   Through the Docker frontend, these read-only checks exercise Nginx and the
+   gateway together:
+   ```bash
+   curl -i http://localhost:5173/api/v1/web/home
+   curl -i http://localhost:5173/api/v1/web/profiles  # JSON 401 without a token
+   ```
+3. Make sure the gateway and BFF are running:
    ```bash
    docker compose ps api-gateway bff-service
    ```
-2. Check the gateway is forwarding correctly:
+4. Check the gateway is forwarding correctly:
    ```bash
    curl http://localhost:8080/actuator/health
    curl http://localhost:8080/api/v1/catalog/movies        # public read
    curl http://localhost:8080/api/v1/web/home             # public BFF screen
    curl http://localhost:8080/api/v1/web/account          # 401 without a token
    ```
-3. A 401 on `/api/v1/web/account` or `/api/v1/web/profiles/**` is expected
+5. A 401 on `/api/v1/web/account` or `/api/v1/web/profiles/**` is expected
    anonymously: those are personal views and need a Bearer token. The landing
    page and content metadata are public on purpose.
 

@@ -11,7 +11,7 @@ describe('HeroSection', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the copy and the two actions', async () => {
+  it('shows the copy and the actions', async () => {
     const onPlay = vi.fn();
     const user = userEvent.setup();
 
@@ -23,6 +23,7 @@ describe('HeroSection', () => {
           tagline="Serie original"
           detailPath="/title/arcane"
           onPlay={onPlay}
+          explorePath="/catalog"
         />
       </MemoryRouter>
     );
@@ -31,6 +32,10 @@ describe('HeroSection', () => {
     expect(screen.getByText('En las ciudades de Piltover y Zaun.')).toBeInTheDocument();
     expect(screen.getByText('Serie original')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Más info' })).toHaveAttribute('href', '/title/arcane');
+    expect(screen.getByRole('link', { name: 'Explorar catálogo' })).toHaveAttribute(
+      'href',
+      '/catalog'
+    );
 
     await user.click(screen.getByRole('button', { name: /Reproducir/ }));
     expect(onPlay).toHaveBeenCalled();

@@ -8,6 +8,8 @@ interface HeroSectionProps {
   backdropUrl?: string;
   detailPath?: string;
   onPlay?: () => void;
+  /** Third action: jumps to the catalogue for visitors who came to browse. */
+  explorePath?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ export default function HeroSection({
   backdropUrl,
   detailPath,
   onPlay,
+  explorePath,
 }: HeroSectionProps) {
   if (!title) {
     return null;
@@ -53,6 +56,11 @@ export default function HeroSection({
           {detailPath && (
             <Button size="lg" variant="secondary" asChild>
               <Link to={detailPath}>Más info</Link>
+            </Button>
+          )}
+          {explorePath && (
+            <Button size="lg" variant="outline" asChild>
+              <Link to={explorePath}>Explorar catálogo</Link>
             </Button>
           )}
         </div>

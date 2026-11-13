@@ -18,6 +18,13 @@ pnpm test:e2e       # Playwright; specs stub the BFF, no stack required
 Auth E2E is opt-in (`E2E_AUTH=1`) because it drives real Keycloak; everything
 else runs against stubbed `/api/v1/web/**` responses.
 
+The Docker frontend is served by Nginx on host port `5173`; its `/api/` location
+proxies to the Compose service `api-gateway:8080` without rewriting the
+versioned path. Rebuild the `frontend` image after changing
+`infra/nginx/frontend.conf`. `VITE_API_BASE_URL` is an optional API **origin**;
+leave it blank for the same-origin Vite/Nginx proxy. Do not set it to
+`/api/v1`, because generated operations already contain that prefix.
+
 ## API layer
 
 - The typed client lives in [`libs/api-contracts`](../libs/api-contracts): orval
@@ -25,7 +32,8 @@ else runs against stubbed `/api/v1/web/**` responses.
   included. Regenerate with `pnpm api:refresh` (needs a running BFF) then
   `pnpm api:generate`.
 - `src/lib/api/client.ts` configures the one axios instance the generated code
-  uses: base URL, bearer token, single 401 renewal. Import hooks from
+  uses: API origin, bearer token, single 401 renewal, and rejects an HTML SPA
+  fallback returned as a successful API response. Import hooks from
   `@lib/api` (the wrapper) so that configuration always runs.
 - `src/lib/api/playback.ts` keeps the player's session lifecycle with its
   failure mapping (paywall, not-ready, stream limit); it is the one hand-written

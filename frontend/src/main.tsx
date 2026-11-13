@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, type AuthProviderProps } from 'react-oidc-context';
-import { type User } from 'oidc-client-ts';
 import App from './App';
 import { userManager } from './lib/auth/userManager';
 import { queryClient } from './lib/query/client';
@@ -15,12 +14,11 @@ import './index.css';
 
 /**
  * After the OIDC redirect the authorization code is still in the URL. Strip it
- * so a reload does not replay the exchange, and honour the `returnTo` state the
- * axios interceptor stored when it had to send the user to login.
+ * so a reload does not replay the exchange. The callback route performs the
+ * router-aware navigation after the provider publishes the authenticated user.
  */
-const onSigninCallback: AuthProviderProps['onSigninCallback'] = (user?: User) => {
-  const returnTo = (user?.state as { returnTo?: string } | undefined)?.returnTo;
-  window.history.replaceState({}, document.title, returnTo || window.location.pathname);
+const onSigninCallback: AuthProviderProps['onSigninCallback'] = () => {
+  window.history.replaceState(window.history.state, document.title, window.location.pathname);
 };
 
 const container = document.getElementById('root');

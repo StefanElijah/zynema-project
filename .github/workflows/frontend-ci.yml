@@ -6,21 +6,40 @@ on:
     paths:
       - 'frontend/**'
       - 'libs/**'
+      - 'infra/nginx/frontend.conf'
+      - 'docker-compose.yml'
+      - '.github/workflows/frontend-ci.yml'
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.prettierignore'
-      - '.github/workflows/frontend-ci.yml'
   push:
     branches: [main, develop]
     paths:
       - 'frontend/**'
       - 'libs/**'
+      - 'infra/nginx/frontend.conf'
+      - 'docker-compose.yml'
+      - '.github/workflows/frontend-ci.yml'
 
 env:
   # Orval 8 (and its Scalar dependency) requires Node >= 22.
   NODE_VERSION: '22'
 
 jobs:
+  nginx-config:
+    name: Validate frontend Nginx
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate frontend proxy and SPA config
+        # Nginx resolves proxy_pass hostnames while loading the config. The
+        # Docker service name is supplied here because the gateway is not part
+        # of this lightweight syntax check.
+        run: >-
+          docker run --rm --add-host api-gateway:127.0.0.1
+          -v "${{ github.workspace }}/infra/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro"
+          nginx:1.27-alpine nginx -t
+
   install:
     name: Install & Cache
     runs-on: ubuntu-latest

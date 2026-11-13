@@ -55,4 +55,21 @@ describe('ContentSection', () => {
     await user.click(screen.getByRole('button', { name: 'Agregar a mi lista' }));
     expect(add).toHaveBeenCalledWith(DUNE.id);
   });
+
+  it('links to the full catalogue when moreHref is provided', () => {
+    renderWithProviders(
+      <ContentSection title="Series populares" items={[DUNE]} moreHref="/catalog?type=SERIES" />
+    );
+
+    expect(screen.getByRole('link', { name: 'Ver todo Series populares' })).toHaveAttribute(
+      'href',
+      '/catalog?type=SERIES'
+    );
+  });
+
+  it('does not show the catalogue link when moreHref is missing', () => {
+    renderWithProviders(<ContentSection title="Series populares" items={[DUNE]} />);
+
+    expect(screen.queryByRole('link', { name: /Ver todo/ })).not.toBeInTheDocument();
+  });
 });

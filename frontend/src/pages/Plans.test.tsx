@@ -73,10 +73,12 @@ describe('Plans', () => {
 
   it('sends a visitor through the login before checkout', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<Plans />, { route: '/plans' });
+    renderWithProviders(<Plans />, { route: '/plans?discount=summer' });
 
     await user.click(screen.getAllByRole('button', { name: 'Iniciar sesión para suscribirme' })[0]);
-    expect(authMock.current.signinRedirect).toHaveBeenCalled();
+    expect(authMock.current.signinRedirect).toHaveBeenCalledWith({
+      state: { returnTo: '/plans?discount=summer' },
+    });
   });
 
   it('subscribes with the plan and the idempotent payment method', async () => {

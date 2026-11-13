@@ -34,6 +34,20 @@ test.describe('authentication', () => {
     await expect(page.getByText('ROLE_user')).toBeVisible();
   });
 
+  test('a visitor signing in from the navbar returns to the home page', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Iniciar sesión' }).click();
+
+    await page.waitForURL(/\/realms\/zynema\/protocol\/openid-connect\/auth/);
+    await page.fill('#username', 'demo');
+    await page.fill('#password', 'demo');
+    await page.click('#kc-login');
+
+    await page.waitForURL('http://localhost:5173/');
+    await expect(page.getByRole('button', { name: 'Perfil' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
   test('the session survives a reload and can be closed', async ({ page }) => {
     await page.goto('/account');
     await page.getByRole('button', { name: 'Iniciar sesión' }).click();
