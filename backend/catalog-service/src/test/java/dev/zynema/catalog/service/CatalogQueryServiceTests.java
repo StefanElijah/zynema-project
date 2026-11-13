@@ -49,7 +49,7 @@ class CatalogQueryServiceTests extends AbstractCatalogIntegrationTest {
     void listsMoviesSortedByPopularity() {
         PageResponse<ContentSummaryDto> page = queryService.listMovies(ContentFilter.empty(), "popularity,desc", 0, 10);
 
-        assertThat(page.totalElements()).isEqualTo(28);
+        assertThat(page.totalElements()).isEqualTo(47);
         assertThat(page.content()).hasSize(10);
         assertThat(page.content().get(0).slug()).isEqualTo("dune-part-two");
         assertThat(page.content().get(0).genres()).extracting(GenreDto::slug)
@@ -177,9 +177,9 @@ class CatalogQueryServiceTests extends AbstractCatalogIntegrationTest {
     void searchMatchesTitles() {
         PageResponse<ContentSummaryDto> page = queryService.search("dune", 0, 10);
 
-        assertThat(page.totalElements()).isEqualTo(2);
+        assertThat(page.totalElements()).isEqualTo(3);
         assertThat(page.content()).extracting(ContentSummaryDto::slug)
-            .containsExactly("dune-part-two", "dune-part-one");
+            .containsExactly("dune-part-two", "dune-part-three", "dune-part-one");
     }
 
     @Test

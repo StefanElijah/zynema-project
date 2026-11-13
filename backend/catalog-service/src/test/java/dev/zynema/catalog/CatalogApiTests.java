@@ -63,7 +63,7 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     void listMovies() throws Exception {
         mockMvc.perform(get("/api/v1/catalog/movies").param("size", "5"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalElements", is(28)))
+            .andExpect(jsonPath("$.totalElements", is(47)))
             .andExpect(jsonPath("$.content", hasSize(5)))
             .andExpect(jsonPath("$.content[0].slug", is("dune-part-two")))
             .andExpect(jsonPath("$.content[0].genres", hasSize(4)))
@@ -140,8 +140,9 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     void search() throws Exception {
         mockMvc.perform(get("/api/v1/catalog/search").param("q", "dune"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.totalElements", is(2)))
-            .andExpect(jsonPath("$.content[0].slug", is("dune-part-two")));
+            .andExpect(jsonPath("$.totalElements", is(3)))
+            .andExpect(jsonPath("$.content[0].slug", is("dune-part-two")))
+            .andExpect(jsonPath("$.content[1].slug", is("dune-part-three")));
     }
 
     @Test
@@ -149,6 +150,34 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
     void searchWithoutQueryIsBadRequest() throws Exception {
         mockMvc.perform(get("/api/v1/catalog/search"))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /franchises returns the curated sagas")
+    void listFranchises() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/franchises"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$", hasSize(13)))
+            .andExpect(jsonPath("$[0].slug", is("the-dark-knight-trilogy")))
+            .andExpect(jsonPath("$[0].itemCount", is(3)));
+    }
+
+    @Test
+    @DisplayName("GET /franchises/{slug} returns its members in curated order")
+    void franchiseDetail() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/franchises/star-wars-skywalker-saga"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name", is("Star Wars: Skywalker Saga")))
+            .andExpect(jsonPath("$.items", hasSize(6)))
+            .andExpect(jsonPath("$.items[0].title", is("Star Wars: Episode I - The Phantom Menace")))
+            .andExpect(jsonPath("$.items[5].title", is("Star Wars: Episode VI - Return of the Jedi")));
+    }
+
+    @Test
+    @DisplayName("an unknown franchise is a 404")
+    void unknownFranchiseIsNotFound() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/franchises/nope"))
+            .andExpect(status().isNotFound());
     }
 
     @Test
