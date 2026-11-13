@@ -133,6 +133,28 @@ final class Stubs {
             AbstractBffIntegrationTest.ARCANE, status, positionSeconds, streamPath);
     }
 
+    static String franchiseList() {
+        return """
+            [{"id": "f0000000-0000-4000-8000-000000000001", "slug": "star-wars-skywalker-saga",
+              "name": "Star Wars: Skywalker Saga", "description": "The six-film saga.",
+              "coverUrl": "/assets/sagas/star-wars.jpg", "itemCount": 6}]
+            """;
+    }
+
+    static String franchiseDetail() {
+        return """
+            {"id": "f0000000-0000-4000-8000-000000000001", "slug": "star-wars-skywalker-saga",
+             "name": "Star Wars: Skywalker Saga", "description": "The six-film saga.",
+             "coverUrl": "/assets/sagas/star-wars.jpg",
+             "items": [
+               %s,
+               %s
+             ]}
+            """.formatted(
+            catalogSummary("a1000000-0000-4000-8000-000000000037", "MOVIE", "Star Wars: Episode I - The Phantom Menace", "star-wars-episode-i-the-phantom-menace", 1999),
+            catalogSummary("a1000000-0000-4000-8000-000000000012", "MOVIE", "Star Wars: Episode III - Revenge of the Sith", "star-wars-episode-iii-revenge-of-the-sith", 2005));
+    }
+
     /** The platform's error envelope, as every service writes it. */
     static String error(int status, String error, String message) {
         return """

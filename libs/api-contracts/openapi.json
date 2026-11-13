@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Zynema Web BFF API",
-    "description": "Aggregated views for the single-page application.\n\nThe SPA talks only to `/api/v1/web/**`. Each endpoint composes the\ndomain services so a screen is one round trip:\n\n- `GET /home` — landing page (public)\n- `GET /catalog/{idOrSlug}` — detail plus playback context (public)\n- `GET /account` — identity, account, subscription\n- `GET /profiles/{profileId}/home` — continue watching and my list\n\nOptional sections that could not be composed are reported in\n`degraded` instead of failing the whole screen.\n",
+    "description": "Aggregated views for the single-page application.\n\nThe SPA talks only to `/api/v1/web/**`. Each endpoint composes the\ndomain services so a screen is one round trip:\n\n- `GET /home` ÔÇö landing page (public)\n- `GET /catalog/{idOrSlug}` ÔÇö detail plus playback context (public)\n- `GET /account` ÔÇö identity, account, subscription\n- `GET /profiles/{profileId}/home` ÔÇö continue watching and my list\n\nOptional sections that could not be composed are reported in\n`degraded` instead of failing the whole screen.\n",
     "contact": {
       "name": "Zynema"
     },
@@ -350,6 +350,57 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/HomeView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/franchises": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "All sagas with their cover and item count",
+        "operationId": "franchises",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FranchiseCard"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/web/franchises/{slug}": {
+      "get": {
+        "tags": ["Web BFF"],
+        "summary": "A saga and its titles in curated order",
+        "operationId": "franchise",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/FranchiseView"
                 }
               }
             }
@@ -987,6 +1038,58 @@
             "type": "string"
           },
           "title": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TitleCard"
+            }
+          }
+        }
+      },
+      "FranchiseCard": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "coverUrl": {
+            "type": "string"
+          },
+          "itemCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "FranchiseView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "coverUrl": {
             "type": "string"
           },
           "items": {

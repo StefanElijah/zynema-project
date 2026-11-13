@@ -74,6 +74,35 @@ class BffApiTests extends AbstractBffIntegrationTest {
     // ───────────────────────────── detail ──────────────────────────────
 
     @Test
+    @DisplayName("sagas are public and their cards keep the catalogue order")
+    void franchisesArePublic() {
+        CATALOG.stubFor(get(urlPathEqualTo("/api/v1/catalog/franchises"))
+            .willReturn(okJson(Stubs.franchiseList())));
+
+        client.get().uri("/api/v1/web/franchises")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$[0].slug").isEqualTo("star-wars-skywalker-saga")
+            .jsonPath("$[0].itemCount").isEqualTo(6);
+    }
+
+    @Test
+    @DisplayName("the saga detail passes the ordered cards through")
+    void franchiseDetailPassesOrderedCards() {
+        CATALOG.stubFor(get(urlPathEqualTo("/api/v1/catalog/franchises/star-wars-skywalker-saga"))
+            .willReturn(okJson(Stubs.franchiseDetail())));
+
+        client.get().uri("/api/v1/web/franchises/star-wars-skywalker-saga")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.name").isEqualTo("Star Wars: Skywalker Saga")
+            .jsonPath("$.items[0].slug").isEqualTo("star-wars-episode-i-the-phantom-menace")
+            .jsonPath("$.items[1].slug").isEqualTo("star-wars-episode-iii-revenge-of-the-sith");
+    }
+
+    @Test
     @DisplayName("an anonymous visitor sees the detail and is told to sign in to watch")
     void detailWithoutTokenAsksForLogin() {
         stubDetail(ARCANE, "SERIES", "Arcane", "arcane");

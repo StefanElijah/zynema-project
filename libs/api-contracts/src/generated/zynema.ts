@@ -7,10 +7,10 @@
  * The SPA talks only to `/api/v1/web/**`. Each endpoint composes the
  * domain services so a screen is one round trip:
  *
- * - `GET /home` — landing page (public)
- * - `GET /catalog/{idOrSlug}` — detail plus playback context (public)
- * - `GET /account` — identity, account, subscription
- * - `GET /profiles/{profileId}/home` — continue watching and my list
+ * - `GET /home` ÔÇö landing page (public)
+ * - `GET /catalog/{idOrSlug}` ÔÇö detail plus playback context (public)
+ * - `GET /account` ÔÇö identity, account, subscription
+ * - `GET /profiles/{profileId}/home` ÔÇö continue watching and my list
  *
  * Optional sections that could not be composed are reported in
  * `degraded` instead of failing the whole screen.
@@ -201,6 +201,24 @@ export interface Row {
 export interface HomeView {
   hero?: Hero;
   rows?: Row[];
+}
+
+export interface FranchiseCard {
+  id?: string;
+  slug?: string;
+  name?: string;
+  description?: string;
+  coverUrl?: string;
+  itemCount?: number;
+}
+
+export interface FranchiseView {
+  id?: string;
+  slug?: string;
+  name?: string;
+  description?: string;
+  coverUrl?: string;
+  items?: TitleCard[];
 }
 
 export interface DownstreamPageTitleCard {
@@ -1386,6 +1404,237 @@ export function useHome<TData = Awaited<ReturnType<typeof home>>, TError = Error
   queryClient?: QueryClient
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getHomeQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+/**
+ * @summary All sagas with their cover and item count
+ */
+export const franchises = (
+  options?: SecondParameter<typeof customInstance>,
+  signal?: AbortSignal
+) => {
+  return customInstance<FranchiseCard[]>(
+    { url: `/api/v1/web/franchises`, method: 'GET', signal },
+    options
+  );
+};
+
+export const getFranchisesQueryKey = () => {
+  return [`/api/v1/web/franchises`] as const;
+};
+
+export const getFranchisesQueryOptions = <
+  TData = Awaited<ReturnType<typeof franchises>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchises>>, TError, TData>>;
+  request?: SecondParameter<typeof customInstance>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getFranchisesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof franchises>>> = ({ signal }) =>
+    franchises(requestOptions, signal);
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof franchises>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type FranchisesQueryResult = NonNullable<Awaited<ReturnType<typeof franchises>>>;
+export type FranchisesQueryError = ErrorType<unknown>;
+
+export function useFranchises<
+  TData = Awaited<ReturnType<typeof franchises>>,
+  TError = ErrorType<unknown>,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchises>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof franchises>>,
+          TError,
+          Awaited<ReturnType<typeof franchises>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFranchises<
+  TData = Awaited<ReturnType<typeof franchises>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchises>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof franchises>>,
+          TError,
+          Awaited<ReturnType<typeof franchises>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFranchises<
+  TData = Awaited<ReturnType<typeof franchises>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchises>>, TError, TData>>;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary All sagas with their cover and item count
+ */
+
+export function useFranchises<
+  TData = Awaited<ReturnType<typeof franchises>>,
+  TError = ErrorType<unknown>,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchises>>, TError, TData>>;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getFranchisesQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+/**
+ * @summary A saga and its titles in curated order
+ */
+export const franchise = (
+  slug: string,
+  options?: SecondParameter<typeof customInstance>,
+  signal?: AbortSignal
+) => {
+  return customInstance<FranchiseView>(
+    { url: `/api/v1/web/franchises/${slug}`, method: 'GET', signal },
+    options
+  );
+};
+
+export const getFranchiseQueryKey = (slug: string) => {
+  return [`/api/v1/web/franchises/${slug}`] as const;
+};
+
+export const getFranchiseQueryOptions = <
+  TData = Awaited<ReturnType<typeof franchise>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchise>>, TError, TData>>;
+    request?: SecondParameter<typeof customInstance>;
+  }
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getFranchiseQueryKey(slug);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof franchise>>> = ({ signal }) =>
+    franchise(slug, requestOptions, signal);
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: slug !== null && slug !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof franchise>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type FranchiseQueryResult = NonNullable<Awaited<ReturnType<typeof franchise>>>;
+export type FranchiseQueryError = ErrorType<unknown>;
+
+export function useFranchise<
+  TData = Awaited<ReturnType<typeof franchise>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchise>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof franchise>>,
+          TError,
+          Awaited<ReturnType<typeof franchise>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFranchise<
+  TData = Awaited<ReturnType<typeof franchise>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchise>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof franchise>>,
+          TError,
+          Awaited<ReturnType<typeof franchise>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFranchise<
+  TData = Awaited<ReturnType<typeof franchise>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchise>>, TError, TData>>;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary A saga and its titles in curated order
+ */
+
+export function useFranchise<
+  TData = Awaited<ReturnType<typeof franchise>>,
+  TError = ErrorType<unknown>,
+>(
+  slug: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof franchise>>, TError, TData>>;
+    request?: SecondParameter<typeof customInstance>;
+  },
+  queryClient?: QueryClient
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getFranchiseQueryOptions(slug, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

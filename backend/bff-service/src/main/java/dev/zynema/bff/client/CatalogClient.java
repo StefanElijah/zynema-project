@@ -78,6 +78,21 @@ public class CatalogClient {
             });
     }
 
+    public Mono<List<FranchiseSummary>> franchises() {
+        return webClient.get()
+            .uri("/api/v1/catalog/franchises")
+            .retrieve()
+            .bodyToMono(new ParameterizedTypeReference<List<FranchiseSummary>>() {
+            });
+    }
+
+    public Mono<FranchiseDetail> franchise(String slug) {
+        return webClient.get()
+            .uri(builder -> builder.path("/api/v1/catalog/franchises/{slug}").build(slug))
+            .retrieve()
+            .bodyToMono(FranchiseDetail.class);
+    }
+
     private Mono<DownstreamPage<ContentSummary>> page(String path,
                                                       java.util.function.UnaryOperator<org.springframework.web.util.UriBuilder> filters,
                                                       String sort, int page, int size) {
@@ -189,5 +204,27 @@ public class CatalogClient {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Credit(String personName, String role, String characterName) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FranchiseSummary(
+        UUID id,
+        String slug,
+        String name,
+        String description,
+        String coverUrl,
+        long itemCount
+    ) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record FranchiseDetail(
+        UUID id,
+        String slug,
+        String name,
+        String description,
+        String coverUrl,
+        List<ContentSummary> items
+    ) {
     }
 }

@@ -38,6 +38,7 @@ public class BffSecurityConfig {
             // the pricing page all work before signing up.
             .pathMatchers(HttpMethod.GET, "/api/v1/web/home").permitAll()
             .pathMatchers(HttpMethod.GET, "/api/v1/web/catalog/**").permitAll()
+            .pathMatchers(HttpMethod.GET, "/api/v1/web/franchises/**").permitAll()
             .pathMatchers(HttpMethod.GET, "/api/v1/web/plans").permitAll()
 
             // Everything else: /account, /profiles/**, and any future write.

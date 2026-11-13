@@ -129,6 +129,18 @@ class GatewaySecurityTests {
     }
 
     @Test
+    @DisplayName("sagas are reachable anonymously")
+    void franchiseReadsArePublic() {
+        client.get().uri("/api/v1/web/franchises")
+            .exchange()
+            .expectStatus().is5xxServerError();
+
+        client.get().uri("/api/v1/web/franchises/star-wars-skywalker-saga")
+            .exchange()
+            .expectStatus().is5xxServerError();
+    }
+
+    @Test
     @DisplayName("the account view, the profile rails and every write are not reachable anonymously")
     void bffPersonalViewsRequireAuthentication() {
         client.get().uri("/api/v1/web/account")

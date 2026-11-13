@@ -101,6 +101,20 @@ public class UpstreamGateway {
         return catalog.contentDetail(idOrSlug);
     }
 
+    @Retry(name = "catalog-service")
+    @CircuitBreaker(name = "catalog-service")
+    @Bulkhead(name = "catalog-service")
+    public Mono<List<CatalogClient.FranchiseSummary>> franchises() {
+        return catalog.franchises();
+    }
+
+    @Retry(name = "catalog-service")
+    @CircuitBreaker(name = "catalog-service")
+    @Bulkhead(name = "catalog-service")
+    public Mono<CatalogClient.FranchiseDetail> franchise(String slug) {
+        return catalog.franchise(slug);
+    }
+
     // ──────────────────────────── user account ───────────────────────────
 
     @Retry(name = "user-service")
