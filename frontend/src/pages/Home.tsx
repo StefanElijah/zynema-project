@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useHome, type HomeView } from '@lib/api';
+import { useFranchises, useHome, type HomeView } from '@lib/api';
 import HeroSection from '../components/organisms/HeroSection';
 import ContentSection from '../components/organisms/ContentSection';
+import SagaSection from '../components/organisms/SagaSection';
 import { Button } from '../components/ui/button';
 import { Skeleton } from '../components/ui/skeleton';
 
@@ -58,6 +59,7 @@ function HomeSkeleton() {
 export default function Home() {
   const navigate = useNavigate();
   const { data, isLoading, isError, refetch } = useHome();
+  const franchises = useFranchises();
   const invalidResponse = !isLoading && !isHomeView(data);
 
   if (isLoading) {
@@ -97,6 +99,8 @@ export default function Home() {
           moreHref={row.id ? CATALOG_LINKS[row.id] : undefined}
         />
       ))}
+
+      <SagaSection items={franchises.data} />
     </>
   );
 }

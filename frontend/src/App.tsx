@@ -7,6 +7,7 @@ import Browse from './pages/Browse';
 import Search from './pages/Search';
 import Detail from './pages/Detail';
 import Plans from './pages/Plans';
+import Saga from './pages/Saga';
 import MyList from './pages/MyList';
 import Account from './pages/Account';
 import Callback from './pages/Callback';
@@ -22,6 +23,7 @@ export default function App() {
           <Route path="/catalog" element={<Browse />} />
           <Route path="/search" element={<Search />} />
           <Route path="/title/:idOrSlug" element={<Detail />} />
+          <Route path="/saga/:slug" element={<Saga />} />
           <Route path="/plans" element={<Plans />} />
           <Route path="/callback" element={<Callback />} />
           <Route

@@ -5,8 +5,12 @@ import { renderWithProviders } from '../test/renderWithProviders';
 import Home from './Home';
 
 const useHome = vi.fn();
+const useFranchises = vi.fn();
 
-vi.mock('@lib/api', () => ({ useHome: () => useHome() }));
+vi.mock('@lib/api', () => ({
+  useHome: () => useHome(),
+  useFranchises: () => useFranchises(),
+}));
 vi.mock('@hooks/useWatchlistActions', () => ({
   useWatchlistActions: () => ({
     canManage: false,
@@ -41,6 +45,31 @@ const HOME = {
 describe('Home', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    useFranchises.mockReturnValue({ data: [] });
+  });
+
+  it('renders the saga section from the public franchise endpoint', () => {
+    useHome.mockReturnValue({ isLoading: false, data: HOME });
+    useFranchises.mockReturnValue({
+      data: [
+        {
+          id: 'f1',
+          slug: 'the-dark-knight-trilogy',
+          name: 'The Dark Knight Trilogy',
+          description: 'The complete trilogy.',
+          coverUrl: '/assets/movies/images/trilogy.jpg',
+          itemCount: 3,
+        },
+      ],
+    });
+
+    renderWithProviders(<Home />);
+
+    expect(screen.getByRole('heading', { name: 'Sagas y franquicias' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /The Dark Knight Trilogy/ })).toHaveAttribute(
+      'href',
+      '/saga/the-dark-knight-trilogy'
+    );
   });
 
   it('shows skeletons while loading', () => {
