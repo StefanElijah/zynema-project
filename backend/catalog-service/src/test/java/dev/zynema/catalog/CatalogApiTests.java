@@ -94,6 +94,7 @@ class CatalogApiTests extends AbstractCatalogIntegrationTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.title", is("Dune: Part Two")))
             .andExpect(jsonPath("$.type", is("MOVIE")))
+            .andExpect(jsonPath("$.trailerUrl", is("https://www.youtube.com/watch?v=Way9Dexny3w")))
             .andExpect(jsonPath("$.seasons", hasSize(0)))
             .andExpect(jsonPath("$.credits", hasSize(4)));
     }

@@ -75,6 +75,17 @@ class CatalogReadModelTests extends AbstractCatalogIntegrationTest {
     }
 
     @Test
+    @DisplayName("every seeded title carries an official trailer")
+    void everySeededTitleHasATrailer() {
+        Integer missing = jdbc.queryForObject("""
+            SELECT count(*) FROM content_read_model
+            WHERE detail ->> 'trailerUrl' IS NULL OR detail ->> 'trailerUrl' = ''
+            """, Integer.class);
+
+        assertThat(missing).isZero();
+    }
+
+    @Test
     @DisplayName("reads are served from the projection: editing it changes the API, the write tables do not")
     void readsComeFromTheProjection() {
         jdbc.update("""
